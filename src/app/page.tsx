@@ -1,25 +1,33 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   BadgeIndianRupee,
   BedDouble,
-  Bell,
   Building2,
   ClipboardList,
   Download,
-  FileSpreadsheet,
+  FileText,
   Home,
-  LogIn,
+  Loader2,
   Menu,
   Package,
+  Plus,
   Search,
+  Settings,
   ShieldCheck,
+  Upload,
   Users,
+  Utensils,
   Wrench,
   X,
 } from "lucide-react";
 import { Badge, EmptyState, Panel, StatCard } from "@/components/ui";
+
+type Row = Record<string, string | number | boolean | undefined>;
+type ApiList = { rows: Row[]; total: number; page: number; pageSize: number };
+type Lists = Record<string, ApiList>;
+type SessionUser = { id: string; email: string; name: string; role: string; propertyId: string };
 
 type Dashboard = {
   summary: {
@@ -37,170 +45,160 @@ type Dashboard = {
     activeResidents: number;
   };
   recentActivity: { id: string; type: string; label: string; at: string }[];
-  beds: { id: string; bedNumber: string; roomId: string; status: string; currentResidentId?: string }[];
-  invoices: { id: string; residentId: string; totalAmount: number; paidAmount: number; status: string; dueDate: string }[];
-  complaints: { id: string; title: string; priority: string; status: string; openedAt: string }[];
-  inventory: { id: string; name: string; category: string; currentStock: number; reorderLevel: number; unit: string }[];
-  residents: { id: string; fullName: string; phone: string; email: string; status: string }[];
 };
 
-const modules = [
-  { label: "Dashboard", icon: Home },
-  { label: "Residents", icon: Users },
-  { label: "Rooms & Beds", icon: BedDouble },
-  { label: "Billing", icon: BadgeIndianRupee },
-  { label: "Maintenance", icon: Wrench },
-  { label: "Visitors", icon: ClipboardList },
-  { label: "Meals", icon: FileSpreadsheet },
-  { label: "Inventory", icon: Package },
-  { label: "Notices", icon: Bell },
-  { label: "Settings", icon: ShieldCheck },
+type ModuleKey = "dashboard" | "residents" | "rooms" | "billing" | "maintenance" | "visitors" | "meals" | "inventory" | "reports" | "settings";
+
+const modules: { key: ModuleKey; label: string; icon: typeof Home }[] = [
+  { key: "dashboard", label: "Dashboard", icon: Home },
+  { key: "residents", label: "Residents", icon: Users },
+  { key: "rooms", label: "Rooms & Beds", icon: BedDouble },
+  { key: "billing", label: "Billing", icon: BadgeIndianRupee },
+  { key: "maintenance", label: "Maintenance", icon: Wrench },
+  { key: "visitors", label: "Visitors", icon: ClipboardList },
+  { key: "meals", label: "Meals & Notices", icon: Utensils },
+  { key: "inventory", label: "Inventory", icon: Package },
+  { key: "reports", label: "Reports", icon: FileText },
+  { key: "settings", label: "Settings", icon: Settings },
 ];
 
-export default function HomePage() {
-  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [query, setQuery] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
+const resources = [
+  "residents",
+  "rooms",
+  "beds",
+  "allocations",
+  "invoices",
+  "payments",
+  "complaints",
+  "maintenance_logs",
+  "visitors",
+  "inventory_items",
+  "inventory_transactions",
+  "expenses",
+  "staff",
+  "notices",
+  "mess_plans",
+  "settings",
+  "audit_logs",
+];
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const login = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: "admin@sunrisepg.test", password: "Demo@12345" }),
-      });
-      if (!login.ok) {
-        setError("Demo login failed. Check server logs and environment configuration.");
-        setLoading(false);
-        return;
+const today = new Date().toISOString().slice(0, 10);
+const month = new Date().toISOString().slice(0, 7);
+
+export default function HomePage() {
+  const [session, setSession] = useState<SessionUser | null>(null);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [lists, setLists] = useState<Lists>({});
+  const [active, setActive] = useState<ModuleKey>("dashboard");
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [toast, setToast] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setToast(null);
+    try {
+      const me = await apiGet<SessionUser | null>("/api/auth/me");
+      if (!me) {
+        await apiPost<SessionUser>("/api/auth/login", { email: "admin@sunrisepg.test", password: "Demo@12345" });
       }
-      const response = await fetch("/api/dashboard");
-      const payload = await response.json();
-      if (!response.ok) setError(payload.error ?? "Could not load dashboard");
-      else setDashboard(payload.data);
+      const [user, dash, ...resourceLists] = await Promise.all([
+        apiGet<SessionUser>("/api/auth/me"),
+        apiGet<Dashboard>("/api/dashboard"),
+        ...resources.map((resource) => apiGet<ApiList>(`/api/${resource}?pageSize=250`)),
+      ]);
+      setSession(user);
+      setDashboard(dash);
+      setLists(Object.fromEntries(resources.map((resource, index) => [resource, resourceLists[index]])));
+    } catch (error) {
+      setToast({ tone: "error", text: error instanceof Error ? error.message : "Could not load app data." });
+    } finally {
       setLoading(false);
     }
+  }
+
+  useEffect(() => {
+    // Initial app hydration is intentionally client-side because demo auth and
+    // the in-memory adapter are session-driven.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
-  const filteredResidents = useMemo(() => {
-    if (!dashboard) return [];
+  const filtered = useMemo(() => {
     const needle = query.toLowerCase();
-    return dashboard.residents.filter((resident) => [resident.fullName, resident.phone, resident.email].join(" ").toLowerCase().includes(needle));
-  }, [dashboard, query]);
+    return Object.fromEntries(Object.entries(lists).map(([key, list]) => [
+      key,
+      { ...list, rows: list.rows.filter((row) => Object.values(row).join(" ").toLowerCase().includes(needle)) },
+    ]));
+  }, [lists, query]);
+
+  async function runAction<T>(label: string, task: () => Promise<T>) {
+    setSaving(true);
+    setToast(null);
+    try {
+      await task();
+      await load();
+      setToast({ tone: "success", text: label });
+    } catch (error) {
+      setToast({ tone: "error", text: error instanceof Error ? error.message : "Action failed." });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="flex min-h-screen">
         <aside className="hidden w-72 shrink-0 border-r border-slate-200 bg-white lg:block">
-          <Sidebar />
+          <Sidebar active={active} setActive={setActive} />
         </aside>
 
         {menuOpen ? (
-          <div className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" onClick={() => setMenuOpen(false)}>
+          <div className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setMenuOpen(false)}>
             <aside className="h-full w-80 bg-white" onClick={(event) => event.stopPropagation()}>
               <div className="flex justify-end p-3">
                 <button className="rounded-md p-2 hover:bg-slate-100" onClick={() => setMenuOpen(false)} aria-label="Close menu">
                   <X size={20} />
                 </button>
               </div>
-              <Sidebar />
+              <Sidebar active={active} setActive={(key) => { setActive(key); setMenuOpen(false); }} />
             </aside>
           </div>
         ) : null}
 
         <section className="min-w-0 flex-1">
-          <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-            <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div className="flex items-center gap-3">
                 <button className="rounded-md p-2 hover:bg-slate-100 lg:hidden" onClick={() => setMenuOpen(true)} aria-label="Open menu">
                   <Menu size={22} />
                 </button>
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sunrise PG</p>
-                  <h1 className="text-lg font-semibold text-slate-950 sm:text-xl">Operations Dashboard</h1>
+                  <h1 className="text-lg font-semibold text-slate-950 sm:text-xl">{modules.find((item) => item.key === active)?.label}</h1>
                 </div>
               </div>
-              <div className="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 sm:flex">
-                <Search size={16} className="text-slate-400" />
-                <input className="w-56 bg-transparent text-sm outline-none" placeholder="Search residents..." value={query} onChange={(event) => setQuery(event.target.value)} />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                  <Search size={16} className="text-slate-400" />
+                  <input className="min-w-0 bg-transparent text-sm outline-none sm:w-64" placeholder="Search all loaded records..." value={query} onChange={(event) => setQuery(event.target.value)} />
+                </div>
+                <Badge tone="blue">{session?.role?.replaceAll("_", " ") ?? "Loading"}</Badge>
               </div>
             </div>
           </header>
 
-          <div className="space-y-6 px-4 py-5 sm:px-6">
-            <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-slate-950">Demo access is active</h2>
-                <p className="mt-1 text-sm text-slate-500">Login as any seeded role with password Demo@12345. Swap DATA_ADAPTER to google_sheets when credentials are ready.</p>
+          <div className="space-y-5 px-4 py-5 sm:px-6">
+            {toast ? (
+              <div className={`rounded-lg border px-4 py-3 text-sm ${toast.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}>
+                {toast.text}
               </div>
-              <div className="flex flex-wrap gap-2">
-                <button className="inline-flex items-center gap-2 rounded-md bg-slate-950 px-3 py-2 text-sm font-medium text-white" onClick={() => downloadReport("/api/reports/revenue?format=csv")}>
-                  <Download size={16} /> CSV
-                </button>
-                <button className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700" onClick={() => downloadReport("/api/reports/occupancy?format=pdf")}>
-                  <Download size={16} /> PDF
-                </button>
-              </div>
-            </div>
-
+            ) : null}
             {loading ? <LoadingGrid /> : null}
-            {error ? <EmptyState title="Dashboard unavailable" body={error} /> : null}
-            {dashboard ? (
-              <>
-                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <StatCard label="Occupancy" value={`${dashboard.summary.occupancyRate}%`} meta={`${dashboard.summary.occupiedBeds}/${dashboard.summary.totalBeds} beds occupied`} tone="blue" />
-                  <StatCard label="Available beds" value={dashboard.summary.availableBeds} meta="Vacant and assignable" tone="green" />
-                  <StatCard label="Due rent" value={money(dashboard.summary.dueRent)} meta="Pending this cycle" tone="red" />
-                  <StatCard label="Collected rent" value={money(dashboard.summary.collectedRent)} meta="Received payments" tone="green" />
-                  <StatCard label="Complaints" value={dashboard.summary.pendingComplaints} meta="Open or in progress" tone="amber" />
-                  <StatCard label="Today" value={`${dashboard.summary.todayCheckIns}/${dashboard.summary.todayCheckOuts}`} meta="Check-ins / check-outs" />
-                  <StatCard label="Low stock" value={dashboard.summary.lowStockItems} meta="Needs replenishment" tone="amber" />
-                  <StatCard label="Expenses" value={money(dashboard.summary.monthlyExpenses)} meta="Current demo period" />
-                </section>
-
-                <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
-                  <Panel title="Residents" action={<Badge tone="blue">{filteredResidents.length} shown</Badge>}>
-                    <div className="mb-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 sm:hidden">
-                      <Search size={16} className="text-slate-400" />
-                      <input className="min-w-0 flex-1 bg-transparent text-sm outline-none" placeholder="Search residents..." value={query} onChange={(event) => setQuery(event.target.value)} />
-                    </div>
-                    <Table
-                      columns={["Name", "Phone", "Email", "Status"]}
-                      rows={filteredResidents.map((resident) => [resident.fullName, resident.phone, resident.email, <Status key={resident.id} value={resident.status} />])}
-                    />
-                  </Panel>
-
-                  <Panel title="Recent Activity">
-                    <div className="space-y-3">
-                      {dashboard.recentActivity.map((item) => (
-                        <div key={item.id} className="flex gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
-                          <div className="mt-1 h-2 w-2 rounded-full bg-sky-500" />
-                          <div>
-                            <p className="text-sm font-medium text-slate-800">{item.label}</p>
-                            <p className="text-xs text-slate-500">{new Date(item.at).toLocaleString()}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Panel>
-                </section>
-
-                <section className="grid gap-4 xl:grid-cols-3">
-                  <Panel title="Beds">
-                    <Table columns={["Bed", "Room", "Status"]} rows={dashboard.beds.map((bed) => [bed.bedNumber, bed.roomId, <Status key={bed.id} value={bed.status} />])} />
-                  </Panel>
-                  <Panel title="Invoices">
-                    <Table columns={["Invoice", "Due", "Status"]} rows={dashboard.invoices.map((invoice) => [invoice.id, money(invoice.totalAmount - invoice.paidAmount), <Status key={invoice.id} value={invoice.status} />])} />
-                  </Panel>
-                  <Panel title="Inventory">
-                    <Table columns={["Item", "Stock", "Alert"]} rows={dashboard.inventory.map((item) => [item.name, `${item.currentStock} ${item.unit}`, <Status key={item.id} value={item.currentStock <= item.reorderLevel ? "low" : "ok"} />])} />
-                  </Panel>
-                </section>
-              </>
+            {!loading ? (
+              <AppContent active={active} dashboard={dashboard} lists={filtered} rawLists={lists} saving={saving} runAction={runAction} />
             ) : null}
           </div>
         </section>
@@ -209,7 +207,359 @@ export default function HomePage() {
   );
 }
 
-function Sidebar() {
+function AppContent({
+  active,
+  dashboard,
+  lists,
+  rawLists,
+  saving,
+  runAction,
+}: {
+  active: ModuleKey;
+  dashboard: Dashboard | null;
+  lists: Lists;
+  rawLists: Lists;
+  saving: boolean;
+  runAction: <T>(label: string, task: () => Promise<T>) => Promise<void>;
+}) {
+  const vacantBeds = (rawLists.beds?.rows ?? []).filter((bed) => bed.status === "vacant");
+  const activeResidents = (rawLists.residents?.rows ?? []).filter((resident) => resident.status === "active");
+  const dueInvoices = (rawLists.invoices?.rows ?? []).filter((invoice) => Number(invoice.totalAmount) > Number(invoice.paidAmount));
+
+  if (active === "dashboard") {
+    return (
+      <>
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard label="Occupancy" value={`${dashboard?.summary.occupancyRate ?? 0}%`} meta={`${dashboard?.summary.occupiedBeds ?? 0}/${dashboard?.summary.totalBeds ?? 0} beds occupied`} tone="blue" />
+          <StatCard label="Available beds" value={dashboard?.summary.availableBeds ?? 0} meta="Vacant and assignable" tone="green" />
+          <StatCard label="Due rent" value={money(dashboard?.summary.dueRent ?? 0)} meta="Pending this cycle" tone="red" />
+          <StatCard label="Collected rent" value={money(dashboard?.summary.collectedRent ?? 0)} meta="Received payments" tone="green" />
+          <StatCard label="Complaints" value={dashboard?.summary.pendingComplaints ?? 0} meta="Open or in progress" tone="amber" />
+          <StatCard label="Today" value={`${dashboard?.summary.todayCheckIns ?? 0}/${dashboard?.summary.todayCheckOuts ?? 0}`} meta="Check-ins / check-outs" />
+          <StatCard label="Low stock" value={dashboard?.summary.lowStockItems ?? 0} meta="Needs replenishment" tone="amber" />
+          <StatCard label="Expenses" value={money(dashboard?.summary.monthlyExpenses ?? 0)} meta="Current period" />
+        </section>
+        <section className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
+          <Panel title="Today’s Work Queue">
+            <WorkQueue lists={rawLists} />
+          </Panel>
+          <Panel title="Recent Activity">
+            <Activity items={dashboard?.recentActivity ?? []} />
+          </Panel>
+        </section>
+      </>
+    );
+  }
+
+  if (active === "residents") {
+    return (
+      <section className="grid gap-4 xl:grid-cols-[420px_1fr]">
+        <Panel title="Check In Resident" action={<Badge tone="green">{vacantBeds.length} vacant beds</Badge>}>
+          <SmartForm
+            saving={saving}
+            submitLabel="Check in and allocate"
+            fields={[
+              ["fullName", "Full name", "text"],
+              ["phone", "Phone", "tel"],
+              ["email", "Email", "email"],
+              ["gender", "Gender", "select", ["Female", "Male", "Other"]],
+              ["occupation", "Occupation", "text"],
+              ["kycType", "KYC type", "select", ["Aadhaar", "PAN", "Passport", "Driving License"]],
+              ["kycNumber", "KYC number", "text"],
+              ["emergencyName", "Emergency contact", "text"],
+              ["emergencyPhone", "Emergency phone", "tel"],
+              ["roomId", "Room", "select", (rawLists.rooms?.rows ?? []).map((room) => [String(room.id), `${room.building}-${room.roomNumber}`])],
+              ["bedId", "Bed", "select", vacantBeds.map((bed) => [String(bed.id), String(bed.bedNumber)])],
+              ["checkInDate", "Check-in date", "date", today],
+              ["expectedCheckOutDate", "Expected check-out", "date"],
+              ["depositAmount", "Deposit", "number", "20000"],
+              ["monthlyRent", "Monthly rent", "number", "9500"],
+            ]}
+            onSubmit={(payload) => runAction("Resident checked in and bed allocated.", () => apiPost("/api/workflows/check-in", payload))}
+          />
+        </Panel>
+        <Panel title="Residents" action={<Badge tone="blue">{lists.residents?.rows.length ?? 0} records</Badge>}>
+          <DataTable rows={lists.residents?.rows ?? []} columns={["fullName", "phone", "email", "occupation", "status"]} />
+        </Panel>
+      </section>
+    );
+  }
+
+  if (active === "rooms") {
+    return (
+      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
+        <div className="space-y-4">
+          <Panel title="Create Room">
+            <SmartForm
+              saving={saving}
+              submitLabel="Add room"
+              fields={[
+                ["building", "Building", "text", "A"],
+                ["floor", "Floor", "text", "1"],
+                ["roomNumber", "Room number", "text"],
+                ["roomType", "Room type", "select", ["Single", "Double Sharing", "Triple Sharing", "Dormitory"]],
+                ["capacity", "Capacity", "number", "2"],
+                ["monthlyRent", "Monthly rent", "number", "10000"],
+                ["status", "Status", "select", ["active", "maintenance"]],
+              ]}
+              onSubmit={(payload) => runAction("Room created.", () => apiPost("/api/rooms", payload))}
+            />
+          </Panel>
+          <Panel title="Create Bed">
+            <SmartForm
+              saving={saving}
+              submitLabel="Add bed"
+              fields={[
+                ["roomId", "Room", "select", (rawLists.rooms?.rows ?? []).map((room) => [String(room.id), `${room.building}-${room.roomNumber}`])],
+                ["bedNumber", "Bed number", "text"],
+                ["status", "Status", "select", ["vacant", "maintenance"]],
+              ]}
+              onSubmit={(payload) => runAction("Bed created.", () => apiPost("/api/beds", payload))}
+            />
+          </Panel>
+        </div>
+        <div className="space-y-4">
+          <Panel title="Rooms"><DataTable rows={lists.rooms?.rows ?? []} columns={["building", "floor", "roomNumber", "roomType", "capacity", "monthlyRent", "status"]} /></Panel>
+          <Panel title="Beds"><DataTable rows={lists.beds?.rows ?? []} columns={["bedNumber", "roomId", "status", "currentResidentId"]} /></Panel>
+        </div>
+      </section>
+    );
+  }
+
+  if (active === "billing") {
+    return (
+      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
+        <div className="space-y-4">
+          <Panel title="Generate Monthly Rent">
+            <SmartForm
+              saving={saving}
+              submitLabel="Generate invoices"
+              fields={[
+                ["month", "Month", "month", month],
+                ["dueDate", "Due date", "date", today],
+                ["messAmount", "Mess charge", "number", "2500"],
+                ["taxPercent", "Tax percent", "number", "0"],
+              ]}
+              onSubmit={(payload) => runAction("Invoices generated for active allocations.", () => apiPost("/api/workflows/generate-invoices", payload))}
+            />
+          </Panel>
+          <Panel title="Record Payment">
+            <SmartForm
+              saving={saving}
+              submitLabel="Post payment"
+              fields={[
+                ["invoiceId", "Invoice", "select", dueInvoices.map((invoice) => [String(invoice.id), `${invoice.id} due ${money(Number(invoice.totalAmount) - Number(invoice.paidAmount))}`])],
+                ["amount", "Amount", "number"],
+                ["mode", "Mode", "select", ["cash", "upi", "bank_transfer", "card", "other"]],
+                ["reference", "Reference", "text"],
+                ["notes", "Notes", "text"],
+              ]}
+              onSubmit={(payload) => runAction("Payment recorded and invoice updated.", () => apiPost("/api/workflows/record-payment", payload))}
+            />
+          </Panel>
+        </div>
+        <div className="space-y-4">
+          <Panel title="Invoices" action={<ReportActions type="defaulters" />}>
+            <DataTable rows={lists.invoices?.rows ?? []} columns={["id", "residentId", "month", "totalAmount", "paidAmount", "dueDate", "status"]} />
+          </Panel>
+          <Panel title="Payments">
+            <DataTable rows={lists.payments?.rows ?? []} columns={["invoiceId", "residentId", "amount", "mode", "paidAt", "reference", "status"]} />
+          </Panel>
+        </div>
+      </section>
+    );
+  }
+
+  if (active === "maintenance") {
+    return (
+      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
+        <div className="space-y-4">
+          <Panel title="Create Complaint">
+            <SmartForm
+              saving={saving}
+              submitLabel="Create ticket"
+              fields={[
+                ["residentId", "Resident", "select", activeResidents.map((resident) => [String(resident.id), String(resident.fullName)])],
+                ["title", "Title", "text"],
+                ["description", "Description", "textarea"],
+                ["priority", "Priority", "select", ["low", "medium", "high", "critical"]],
+                ["status", "Status", "select", ["open", "in_progress"]],
+                ["openedAt", "Opened at", "datetime-local", new Date().toISOString().slice(0, 16)],
+              ]}
+              onSubmit={(payload) => runAction("Complaint created.", () => apiPost("/api/complaints", payload))}
+            />
+          </Panel>
+          <Panel title="Update Complaint">
+            <SmartForm
+              saving={saving}
+              submitLabel="Update status"
+              fields={[
+                ["complaintId", "Complaint", "select", (rawLists.complaints?.rows ?? []).map((complaint) => [String(complaint.id), String(complaint.title)])],
+                ["status", "Status", "select", ["open", "in_progress", "resolved", "closed"]],
+                ["actionTaken", "Action taken", "textarea"],
+                ["materialCost", "Material cost", "number", "0"],
+                ["laborCost", "Labor cost", "number", "0"],
+              ]}
+              onSubmit={(payload) => runAction("Complaint updated and maintenance log saved.", () => apiPost("/api/workflows/complaint-status", payload))}
+            />
+          </Panel>
+        </div>
+        <div className="space-y-4">
+          <Panel title="Complaints" action={<ReportActions type="complaints" />}>
+            <DataTable rows={lists.complaints?.rows ?? []} columns={["title", "residentId", "priority", "status", "assignedStaffId", "openedAt", "resolvedAt"]} />
+          </Panel>
+          <Panel title="Maintenance Logs">
+            <DataTable rows={lists.maintenance_logs?.rows ?? []} columns={["complaintId", "staffId", "actionTaken", "materialCost", "laborCost", "createdAt"]} />
+          </Panel>
+        </div>
+      </section>
+    );
+  }
+
+  if (active === "visitors") {
+    return (
+      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
+        <Panel title="Visitor Entry">
+          <SmartForm
+            saving={saving}
+            submitLabel="Log visitor"
+            fields={[
+              ["residentId", "Resident", "select", activeResidents.map((resident) => [String(resident.id), String(resident.fullName)])],
+              ["visitorName", "Visitor name", "text"],
+              ["visitorPhone", "Visitor phone", "tel"],
+              ["purpose", "Purpose", "text"],
+              ["timeIn", "Time in", "datetime-local", new Date().toISOString().slice(0, 16)],
+              ["guardNotes", "Guard notes", "text"],
+            ]}
+            onSubmit={(payload) => runAction("Visitor logged.", () => apiPost("/api/visitors", payload))}
+          />
+        </Panel>
+        <Panel title="Visitor Log">
+          <DataTable rows={lists.visitors?.rows ?? []} columns={["visitorName", "visitorPhone", "residentId", "purpose", "timeIn", "timeOut", "guardNotes"]} />
+        </Panel>
+      </section>
+    );
+  }
+
+  if (active === "meals") {
+    return (
+      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
+        <div className="space-y-4">
+          <Panel title="Meal Plan">
+            <SmartForm
+              saving={saving}
+              submitLabel="Save plan"
+              fields={[
+                ["name", "Plan name", "text", "Standard Veg"],
+                ["monthlyCharge", "Monthly charge", "number", "2500"],
+                ["weeklyMenuJson", "Weekly menu JSON", "textarea", "{\"Mon\":\"Dal rice\",\"Tue\":\"Chapati sabzi\"}"],
+                ["status", "Status", "select", ["active", "inactive"]],
+              ]}
+              onSubmit={(payload) => runAction("Meal plan saved.", () => apiPost("/api/mess_plans", payload))}
+            />
+          </Panel>
+          <Panel title="Notice">
+            <SmartForm
+              saving={saving}
+              submitLabel="Publish notice"
+              fields={[
+                ["title", "Title", "text"],
+                ["body", "Body", "textarea"],
+                ["audience", "Audience", "select", ["all", "RESIDENT", "CARETAKER", "ACCOUNTANT"]],
+                ["publishAt", "Publish at", "datetime-local", new Date().toISOString().slice(0, 16)],
+                ["status", "Status", "select", ["active", "inactive"]],
+              ]}
+              onSubmit={(payload) => runAction("Notice published.", () => apiPost("/api/notices", payload))}
+            />
+          </Panel>
+        </div>
+        <div className="space-y-4">
+          <Panel title="Mess Plans"><DataTable rows={lists.mess_plans?.rows ?? []} columns={["name", "monthlyCharge", "status", "weeklyMenuJson"]} /></Panel>
+          <Panel title="Notices"><DataTable rows={lists.notices?.rows ?? []} columns={["title", "audience", "publishAt", "expiresAt", "status"]} /></Panel>
+        </div>
+      </section>
+    );
+  }
+
+  if (active === "inventory") {
+    return (
+      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
+        <div className="space-y-4">
+          <Panel title="Create Item">
+            <SmartForm
+              saving={saving}
+              submitLabel="Add item"
+              fields={[
+                ["name", "Item name", "text"],
+                ["category", "Category", "text"],
+                ["unit", "Unit", "text", "pcs"],
+                ["currentStock", "Opening stock", "number", "0"],
+                ["reorderLevel", "Reorder level", "number", "10"],
+                ["status", "Status", "select", ["active", "inactive"]],
+              ]}
+              onSubmit={(payload) => runAction("Inventory item created.", () => apiPost("/api/inventory_items", payload))}
+            />
+          </Panel>
+          <Panel title="Stock Movement">
+            <SmartForm
+              saving={saving}
+              submitLabel="Post stock entry"
+              fields={[
+                ["itemId", "Item", "select", (rawLists.inventory_items?.rows ?? []).map((item) => [String(item.id), String(item.name)])],
+                ["type", "Type", "select", ["purchase", "issue", "consume", "adjustment"]],
+                ["quantity", "Quantity", "number"],
+                ["unitCost", "Unit cost", "number", "0"],
+                ["reference", "Reference", "text"],
+              ]}
+              onSubmit={(payload) => runAction("Stock movement posted.", () => apiPost("/api/workflows/inventory-transaction", payload))}
+            />
+          </Panel>
+        </div>
+        <div className="space-y-4">
+          <Panel title="Stock Levels" action={<ReportActions type="inventory" />}>
+            <DataTable rows={lists.inventory_items?.rows ?? []} columns={["name", "category", "currentStock", "unit", "reorderLevel", "status"]} />
+          </Panel>
+          <Panel title="Transactions"><DataTable rows={lists.inventory_transactions?.rows ?? []} columns={["itemId", "type", "quantity", "unitCost", "reference", "createdBy"]} /></Panel>
+        </div>
+      </section>
+    );
+  }
+
+  if (active === "reports") {
+    return <Reports lists={lists} />;
+  }
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
+      <div className="space-y-4">
+        <Panel title="Expense Entry">
+          <SmartForm
+            saving={saving}
+            submitLabel="Save expense"
+            fields={[
+              ["category", "Category", "text"],
+              ["amount", "Amount", "number"],
+              ["paidAt", "Paid at", "date", today],
+              ["vendor", "Vendor", "text"],
+              ["notes", "Notes", "text"],
+              ["status", "Status", "select", ["active", "inactive"]],
+            ]}
+            onSubmit={(payload) => runAction("Expense saved.", () => apiPost("/api/expenses", payload))}
+          />
+        </Panel>
+        <Panel title="Document Upload">
+          <UploadForm saving={saving} onDone={(message) => runAction(message, async () => undefined)} />
+        </Panel>
+      </div>
+      <div className="space-y-4">
+        <Panel title="Expenses"><DataTable rows={lists.expenses?.rows ?? []} columns={["category", "amount", "paidAt", "vendor", "status"]} /></Panel>
+        <Panel title="Audit Logs"><DataTable rows={lists.audit_logs?.rows ?? []} columns={["actorUserId", "action", "entity", "entityId", "createdAt"]} /></Panel>
+      </div>
+    </section>
+  );
+}
+
+function Sidebar({ active, setActive }: { active: ModuleKey; setActive: (key: ModuleKey) => void }) {
   return (
     <div className="flex h-full flex-col px-4 py-5">
       <div className="mb-6 flex items-center gap-3 px-2">
@@ -218,43 +568,117 @@ function Sidebar() {
         </div>
         <div>
           <p className="font-semibold text-slate-950">PG Manager</p>
-          <p className="text-xs text-slate-500">Sheets + Drive edition</p>
+          <p className="text-xs text-slate-500">Production console</p>
         </div>
       </div>
       <nav className="space-y-1">
         {modules.map((module) => {
           const Icon = module.icon;
           return (
-            <a key={module.label} href="#" className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-950">
+            <button
+              key={module.key}
+              className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium ${active === module.key ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"}`}
+              onClick={() => setActive(module.key)}
+            >
               <Icon size={18} /> {module.label}
-            </a>
+            </button>
           );
         })}
       </nav>
       <div className="mt-auto rounded-lg border border-slate-200 bg-slate-50 p-3">
         <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
-          <LogIn size={16} /> Demo users
+          <ShieldCheck size={16} /> Deployment ready
         </div>
-        <p className="mt-1 text-xs text-slate-500">admin, owner, accounts, care, resident at sunrisepg.test</p>
+        <p className="mt-1 text-xs text-slate-500">Switch DATA_ADAPTER to google_sheets and add service-account credentials.</p>
       </div>
     </div>
   );
 }
 
-function Table({ columns, rows }: { columns: string[]; rows: (string | number | React.ReactNode)[][] }) {
-  if (!rows.length) return <EmptyState title="No records found" body="Adjust filters or create a new record." />;
+type FieldConfig = [name: string, label: string, type: "text" | "email" | "tel" | "number" | "date" | "month" | "datetime-local" | "select" | "textarea", options?: string | string[] | string[][]];
+
+function SmartForm({ fields, submitLabel, saving, onSubmit }: { fields: FieldConfig[]; submitLabel: string; saving: boolean; onSubmit: (payload: Row) => void }) {
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const payload: Row = {};
+    fields.forEach(([name, , type]) => {
+      const value = String(formData.get(name) ?? "");
+      if (value === "") return;
+      payload[name] = type === "number" ? Number(value) : value;
+    });
+    onSubmit(payload);
+    event.currentTarget.reset();
+  }
+
+  return (
+    <form className="space-y-3" onSubmit={submit}>
+      {fields.map(([name, label, type, options]) => (
+        <label key={name} className="block">
+          <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</span>
+          {type === "select" ? (
+            <select name={name} className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-950" defaultValue="">
+              <option value="" disabled>Select {label.toLowerCase()}</option>
+              {normalizeOptions(options).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
+            </select>
+          ) : type === "textarea" ? (
+            <textarea name={name} defaultValue={typeof options === "string" ? options : ""} className="mt-1 min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-950" />
+          ) : (
+            <input name={name} type={type} defaultValue={typeof options === "string" ? options : ""} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-950" />
+          )}
+        </label>
+      ))}
+      <button disabled={saving} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60">
+        {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} {submitLabel}
+      </button>
+    </form>
+  );
+}
+
+function UploadForm({ saving, onDone }: { saving: boolean; onDone: (message: string) => void }) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    await apiUpload("/api/files/upload", formData);
+    form.reset();
+    onDone("File uploaded to configured Drive folder.");
+  }
+
+  return (
+    <form className="space-y-3" onSubmit={submit}>
+      <label className="block">
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Folder</span>
+        <select name="folder" className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+          {["agreements", "id_proofs", "resident_photos", "receipts", "complaint_images", "exports", "notices", "staff_docs"].map((folder) => <option key={folder} value={folder}>{folder}</option>)}
+        </select>
+      </label>
+      <input name="file" type="file" className="w-full rounded-md border border-dashed border-slate-300 p-3 text-sm" required />
+      <button disabled={saving} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800">
+        <Upload size={16} /> Upload document
+      </button>
+    </form>
+  );
+}
+
+function DataTable({ rows, columns }: { rows: Row[]; columns: string[] }) {
+  if (!rows.length) return <EmptyState title="No records found" body="Create a record or adjust your search." />;
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full text-left text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-            {columns.map((column) => <th key={column} className="whitespace-nowrap px-2 py-2 font-semibold">{column}</th>)}
+            {columns.map((column) => <th key={column} className="whitespace-nowrap px-2 py-2 font-semibold">{pretty(column)}</th>)}
           </tr>
         </thead>
         <tbody>
-          {rows.slice(0, 8).map((row, index) => (
-            <tr key={index} className="border-b border-slate-100 last:border-0">
-              {row.map((cell, cellIndex) => <td key={cellIndex} className="whitespace-nowrap px-2 py-3 text-slate-700">{cell}</td>)}
+          {rows.map((row) => (
+            <tr key={String(row.id ?? JSON.stringify(row))} className="border-b border-slate-100 last:border-0">
+              {columns.map((column) => (
+                <td key={column} className="max-w-72 truncate whitespace-nowrap px-2 py-3 text-slate-700">
+                  {column === "status" || column === "priority" ? <Status value={String(row[column] ?? "")} /> : formatCell(row[column])}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
@@ -263,8 +687,87 @@ function Table({ columns, rows }: { columns: string[]; rows: (string | number | 
   );
 }
 
+function WorkQueue({ lists }: { lists: Lists }) {
+  const due = (lists.invoices?.rows ?? []).filter((invoice) => Number(invoice.totalAmount) > Number(invoice.paidAmount)).length;
+  const openComplaints = (lists.complaints?.rows ?? []).filter((complaint) => ["open", "in_progress"].includes(String(complaint.status))).length;
+  const vacantBeds = (lists.beds?.rows ?? []).filter((bed) => bed.status === "vacant").length;
+  const lowStock = (lists.inventory_items?.rows ?? []).filter((item) => Number(item.currentStock) <= Number(item.reorderLevel)).length;
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <Task title="Collect rent" value={`${due} invoices pending`} tone={due ? "amber" : "green"} />
+      <Task title="Resolve maintenance" value={`${openComplaints} tickets open`} tone={openComplaints ? "red" : "green"} />
+      <Task title="Fill beds" value={`${vacantBeds} beds vacant`} tone={vacantBeds ? "blue" : "green"} />
+      <Task title="Restock inventory" value={`${lowStock} low-stock items`} tone={lowStock ? "amber" : "green"} />
+    </div>
+  );
+}
+
+function Task({ title, value, tone }: { title: string; value: string; tone: "green" | "amber" | "red" | "blue" }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <Badge tone={tone}>{title}</Badge>
+      <p className="mt-3 text-lg font-semibold text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function Activity({ items }: { items: { id: string; label: string; at: string }[] }) {
+  if (!items.length) return <EmptyState title="No recent activity" body="New payments, complaints, and visitors will appear here." />;
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <div key={item.id} className="flex gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+          <div className="mt-1 h-2 w-2 rounded-full bg-sky-500" />
+          <div>
+            <p className="text-sm font-medium text-slate-800">{item.label}</p>
+            <p className="text-xs text-slate-500">{new Date(item.at).toLocaleString()}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Reports({ lists }: { lists: Lists }) {
+  const reports = ["revenue", "occupancy", "defaulters", "complaints", "inventory"];
+  return (
+    <section className="space-y-4">
+      <Panel title="Export Center">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {reports.map((report) => (
+            <div key={report} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="font-semibold text-slate-950">{pretty(report)}</p>
+              <p className="mt-1 text-sm text-slate-500">Download as CSV or PDF.</p>
+              <div className="mt-4 flex gap-2">
+                <button className="rounded-md bg-slate-950 px-3 py-2 text-sm font-medium text-white" onClick={() => downloadReport(`/api/reports/${report}?format=csv`)}>CSV</button>
+                <button className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700" onClick={() => downloadReport(`/api/reports/${report}?format=pdf`)}>PDF</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <Panel title="Financial Summary">
+        <DataTable rows={lists.invoices?.rows ?? []} columns={["id", "residentId", "month", "totalAmount", "paidAmount", "status"]} />
+      </Panel>
+    </section>
+  );
+}
+
+function ReportActions({ type }: { type: string }) {
+  return (
+    <div className="flex gap-2">
+      <button className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700" onClick={() => downloadReport(`/api/reports/${type}?format=csv`)}>
+        <Download size={14} /> CSV
+      </button>
+      <button className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700" onClick={() => downloadReport(`/api/reports/${type}?format=pdf`)}>
+        <Download size={14} /> PDF
+      </button>
+    </div>
+  );
+}
+
 function Status({ value }: { value: string }) {
-  const tone = value.includes("paid") || value === "occupied" || value === "active" || value === "ok" ? "green" : value.includes("due") || value === "low" || value === "open" ? "amber" : value.includes("maintenance") ? "red" : "slate";
+  const tone = value.includes("paid") || value === "occupied" || value === "active" || value === "received" ? "green" : value.includes("due") || value === "low" || value === "open" || value === "high" ? "amber" : value.includes("critical") || value.includes("maintenance") ? "red" : value.includes("progress") ? "blue" : "slate";
   return <Badge tone={tone}>{value.replaceAll("_", " ")}</Badge>;
 }
 
@@ -276,10 +779,51 @@ function LoadingGrid() {
   );
 }
 
+function normalizeOptions(options: FieldConfig[3]): [string, string][] {
+  if (!options) return [];
+  if (typeof options === "string") return [[options, options]];
+  return options.map((option) => Array.isArray(option) ? [option[0] ?? "", option[1] ?? option[0] ?? ""] : [option, option]);
+}
+
+function formatCell(value: Row[string]) {
+  if (value === undefined || value === "") return "—";
+  if (typeof value === "number" && value > 999) return money(value);
+  return String(value);
+}
+
+function pretty(value: string) {
+  return value.replaceAll("_", " ").replace(/([A-Z])/g, " $1").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 function money(value: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
 }
 
 function downloadReport(url: string) {
   window.location.assign(url);
+}
+
+async function apiGet<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error ?? "Request failed");
+  return payload.data as T;
+}
+
+async function apiPost<T>(url: string, body: Row): Promise<T> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error ?? "Request failed");
+  return payload.data as T;
+}
+
+async function apiUpload<T>(url: string, body: FormData): Promise<T> {
+  const response = await fetch(url, { method: "POST", body });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error ?? "Upload failed");
+  return payload.data as T;
 }

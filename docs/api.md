@@ -34,3 +34,11 @@ Supported resources: `users`, `properties`, `rooms`, `beds`, `residents`, `alloc
 - `GET /api/reports/defaulters?format=json|csv|pdf`
 - `GET /api/reports/complaints?format=json|csv|pdf`
 - `GET /api/reports/inventory?format=json|csv|pdf`
+
+## Business Workflows
+
+- `POST /api/workflows/check-in` - create resident, create active allocation, and mark the selected bed occupied.
+- `POST /api/workflows/generate-invoices` - generate monthly invoices for active allocations, skipping already generated resident/month invoices.
+- `POST /api/workflows/record-payment` - create payment, update invoice paid amount, and set paid/partial status.
+- `POST /api/workflows/complaint-status` - update complaint status and optionally create a maintenance log.
+- `POST /api/workflows/inventory-transaction` - create stock movement and update current stock.

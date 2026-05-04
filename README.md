@@ -18,6 +18,7 @@ The app includes multi-role authentication, dashboards, CRUD APIs, reports, file
 - Visitor logs, inventory, expenses, staff, notices, settings, audit logs.
 - Search, pagination-ready APIs, loading states, empty states, CSV/PDF exports.
 - Google Sheets and Google Drive service abstractions.
+- Working operations console with check-in, room/bed creation, invoice generation, payment posting, complaint updates, visitor entry, meal plans, notices, expenses, stock movement, document upload, and reports.
 
 ## Architecture Diagram
 
@@ -49,6 +50,7 @@ src/app/api/[resource]        generic CRUD API
 src/app/api/dashboard         operational dashboard API
 src/app/api/files/upload      Drive upload endpoint
 src/app/api/reports/[type]    JSON, CSV, PDF reports
+src/app/api/workflows         business transactions across multiple sheets
 src/components                shared UI components
 src/lib/auth                  JWT session and password auth
 src/lib/storage               storage adapters and Drive service
@@ -78,6 +80,7 @@ See [docs/api.md](./docs/api.md).
 - `src/lib/auth/session.ts` - secure HTTP-only JWT session handling.
 - `src/app/api/[resource]/route.ts` - generic list/create routes.
 - `src/app/api/[resource]/[id]/route.ts` - get/update/soft-delete routes.
+- `src/app/api/workflows/*/route.ts` - transactional business workflows.
 - `src/app/page.tsx` - responsive management dashboard.
 
 ## Setup Instructions
@@ -142,6 +145,7 @@ Password: `Demo@12345`
 - File uploads land in the expected Drive folder.
 - CSV and PDF exports download correctly.
 - Mobile layout works at 360px width and desktop at 1440px.
+- Product flows work end to end: check-in changes bed occupancy, invoice generation creates invoices, payment posting updates invoice status, complaint status creates a maintenance log, and stock movement updates inventory.
 
 ## Assumptions
 
