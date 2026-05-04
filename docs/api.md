@@ -22,6 +22,8 @@ Supported resources: `users`, `properties`, `rooms`, `beds`, `residents`, `alloc
 - `PUT /api/{resource}/{id}` - update one record.
 - `DELETE /api/{resource}/{id}` - soft delete one record where the entity supports `status`.
 
+The web console exposes these as row-level **Edit** and **Delete** actions on every operational table. Delete uses a confirmation prompt and calls the soft-delete endpoint.
+
 ## Files
 
 - `POST /api/files/upload` - multipart upload with `file` and `folder`.

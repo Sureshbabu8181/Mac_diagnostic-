@@ -19,6 +19,7 @@ The app includes multi-role authentication, dashboards, CRUD APIs, reports, file
 - Search, pagination-ready APIs, loading states, empty states, CSV/PDF exports.
 - Google Sheets and Google Drive service abstractions.
 - Working operations console with check-in, room/bed creation, invoice generation, payment posting, complaint updates, visitor entry, meal plans, notices, expenses, stock movement, document upload, and reports.
+- Row-level manage actions for operational records: edit through modal forms and soft-delete with confirmation.
 
 ## Architecture Diagram
 
@@ -146,6 +147,7 @@ Password: `Demo@12345`
 - CSV and PDF exports download correctly.
 - Mobile layout works at 360px width and desktop at 1440px.
 - Product flows work end to end: check-in changes bed occupancy, invoice generation creates invoices, payment posting updates invoice status, complaint status creates a maintenance log, and stock movement updates inventory.
+- Edit and soft-delete buttons appear on operational tables and call the protected `PUT`/`DELETE` APIs.
 
 ## Assumptions
 

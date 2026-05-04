@@ -7,6 +7,7 @@ import {
   Building2,
   ClipboardList,
   Download,
+  Edit3,
   FileText,
   Home,
   Loader2,
@@ -16,6 +17,8 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Save,
+  Trash2,
   Upload,
   Users,
   Utensils,
@@ -279,7 +282,7 @@ function AppContent({
           />
         </Panel>
         <Panel title="Residents" action={<Badge tone="blue">{lists.residents?.rows.length ?? 0} records</Badge>}>
-          <DataTable rows={lists.residents?.rows ?? []} columns={["fullName", "phone", "email", "occupation", "status"]} />
+          <DataTable resource="residents" rows={lists.residents?.rows ?? []} columns={["fullName", "phone", "email", "occupation", "status"]} runAction={runAction} />
         </Panel>
       </section>
     );
@@ -319,8 +322,8 @@ function AppContent({
           </Panel>
         </div>
         <div className="space-y-4">
-          <Panel title="Rooms"><DataTable rows={lists.rooms?.rows ?? []} columns={["building", "floor", "roomNumber", "roomType", "capacity", "monthlyRent", "status"]} /></Panel>
-          <Panel title="Beds"><DataTable rows={lists.beds?.rows ?? []} columns={["bedNumber", "roomId", "status", "currentResidentId"]} /></Panel>
+          <Panel title="Rooms"><DataTable resource="rooms" rows={lists.rooms?.rows ?? []} columns={["building", "floor", "roomNumber", "roomType", "capacity", "monthlyRent", "status"]} runAction={runAction} /></Panel>
+          <Panel title="Beds"><DataTable resource="beds" rows={lists.beds?.rows ?? []} columns={["bedNumber", "roomId", "status", "currentResidentId"]} runAction={runAction} /></Panel>
         </div>
       </section>
     );
@@ -360,10 +363,10 @@ function AppContent({
         </div>
         <div className="space-y-4">
           <Panel title="Invoices" action={<ReportActions type="defaulters" />}>
-            <DataTable rows={lists.invoices?.rows ?? []} columns={["id", "residentId", "month", "totalAmount", "paidAmount", "dueDate", "status"]} />
+            <DataTable resource="invoices" rows={lists.invoices?.rows ?? []} columns={["id", "residentId", "month", "totalAmount", "paidAmount", "dueDate", "status"]} runAction={runAction} />
           </Panel>
           <Panel title="Payments">
-            <DataTable rows={lists.payments?.rows ?? []} columns={["invoiceId", "residentId", "amount", "mode", "paidAt", "reference", "status"]} />
+            <DataTable resource="payments" rows={lists.payments?.rows ?? []} columns={["invoiceId", "residentId", "amount", "mode", "paidAt", "reference", "status"]} runAction={runAction} />
           </Panel>
         </div>
       </section>
@@ -406,10 +409,10 @@ function AppContent({
         </div>
         <div className="space-y-4">
           <Panel title="Complaints" action={<ReportActions type="complaints" />}>
-            <DataTable rows={lists.complaints?.rows ?? []} columns={["title", "residentId", "priority", "status", "assignedStaffId", "openedAt", "resolvedAt"]} />
+            <DataTable resource="complaints" rows={lists.complaints?.rows ?? []} columns={["title", "residentId", "priority", "status", "assignedStaffId", "openedAt", "resolvedAt"]} runAction={runAction} />
           </Panel>
           <Panel title="Maintenance Logs">
-            <DataTable rows={lists.maintenance_logs?.rows ?? []} columns={["complaintId", "staffId", "actionTaken", "materialCost", "laborCost", "createdAt"]} />
+            <DataTable resource="maintenance_logs" rows={lists.maintenance_logs?.rows ?? []} columns={["complaintId", "staffId", "actionTaken", "materialCost", "laborCost", "createdAt"]} runAction={runAction} />
           </Panel>
         </div>
       </section>
@@ -435,7 +438,7 @@ function AppContent({
           />
         </Panel>
         <Panel title="Visitor Log">
-          <DataTable rows={lists.visitors?.rows ?? []} columns={["visitorName", "visitorPhone", "residentId", "purpose", "timeIn", "timeOut", "guardNotes"]} />
+          <DataTable resource="visitors" rows={lists.visitors?.rows ?? []} columns={["visitorName", "visitorPhone", "residentId", "purpose", "timeIn", "timeOut", "guardNotes"]} runAction={runAction} />
         </Panel>
       </section>
     );
@@ -474,8 +477,8 @@ function AppContent({
           </Panel>
         </div>
         <div className="space-y-4">
-          <Panel title="Mess Plans"><DataTable rows={lists.mess_plans?.rows ?? []} columns={["name", "monthlyCharge", "status", "weeklyMenuJson"]} /></Panel>
-          <Panel title="Notices"><DataTable rows={lists.notices?.rows ?? []} columns={["title", "audience", "publishAt", "expiresAt", "status"]} /></Panel>
+          <Panel title="Mess Plans"><DataTable resource="mess_plans" rows={lists.mess_plans?.rows ?? []} columns={["name", "monthlyCharge", "status", "weeklyMenuJson"]} runAction={runAction} /></Panel>
+          <Panel title="Notices"><DataTable resource="notices" rows={lists.notices?.rows ?? []} columns={["title", "audience", "publishAt", "expiresAt", "status"]} runAction={runAction} /></Panel>
         </div>
       </section>
     );
@@ -517,9 +520,9 @@ function AppContent({
         </div>
         <div className="space-y-4">
           <Panel title="Stock Levels" action={<ReportActions type="inventory" />}>
-            <DataTable rows={lists.inventory_items?.rows ?? []} columns={["name", "category", "currentStock", "unit", "reorderLevel", "status"]} />
+            <DataTable resource="inventory_items" rows={lists.inventory_items?.rows ?? []} columns={["name", "category", "currentStock", "unit", "reorderLevel", "status"]} runAction={runAction} />
           </Panel>
-          <Panel title="Transactions"><DataTable rows={lists.inventory_transactions?.rows ?? []} columns={["itemId", "type", "quantity", "unitCost", "reference", "createdBy"]} /></Panel>
+          <Panel title="Transactions"><DataTable resource="inventory_transactions" rows={lists.inventory_transactions?.rows ?? []} columns={["itemId", "type", "quantity", "unitCost", "reference", "createdBy"]} runAction={runAction} /></Panel>
         </div>
       </section>
     );
@@ -552,8 +555,8 @@ function AppContent({
         </Panel>
       </div>
       <div className="space-y-4">
-        <Panel title="Expenses"><DataTable rows={lists.expenses?.rows ?? []} columns={["category", "amount", "paidAt", "vendor", "status"]} /></Panel>
-        <Panel title="Audit Logs"><DataTable rows={lists.audit_logs?.rows ?? []} columns={["actorUserId", "action", "entity", "entityId", "createdAt"]} /></Panel>
+        <Panel title="Expenses"><DataTable resource="expenses" rows={lists.expenses?.rows ?? []} columns={["category", "amount", "paidAt", "vendor", "status"]} runAction={runAction} /></Panel>
+        <Panel title="Audit Logs"><DataTable resource="audit_logs" rows={lists.audit_logs?.rows ?? []} columns={["actorUserId", "action", "entity", "entityId", "createdAt"]} runAction={runAction} /></Panel>
       </div>
     </section>
   );
@@ -661,28 +664,127 @@ function UploadForm({ saving, onDone }: { saving: boolean; onDone: (message: str
   );
 }
 
-function DataTable({ rows, columns }: { rows: Row[]; columns: string[] }) {
+function DataTable({
+  rows,
+  columns,
+  resource,
+  runAction,
+}: {
+  rows: Row[];
+  columns: string[];
+  resource?: string;
+  runAction?: <T>(label: string, task: () => Promise<T>) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState<Row | null>(null);
+  const canManage = Boolean(resource && runAction);
+
+  async function deleteRow(row: Row) {
+    if (!resource || !runAction || !row.id) return;
+    const label = String(row.fullName ?? row.name ?? row.title ?? row.id);
+    const confirmed = window.confirm(`Soft delete ${label}? This hides the record from normal lists but keeps an audit trail.`);
+    if (!confirmed) return;
+    await runAction("Record soft-deleted.", () => apiDelete(`/api/${resource}/${row.id}`));
+  }
+
   if (!rows.length) return <EmptyState title="No records found" body="Create a record or adjust your search." />;
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-            {columns.map((column) => <th key={column} className="whitespace-nowrap px-2 py-2 font-semibold">{pretty(column)}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={String(row.id ?? JSON.stringify(row))} className="border-b border-slate-100 last:border-0">
-              {columns.map((column) => (
-                <td key={column} className="max-w-72 truncate whitespace-nowrap px-2 py-3 text-slate-700">
-                  {column === "status" || column === "priority" ? <Status value={String(row[column] ?? "")} /> : formatCell(row[column])}
-                </td>
-              ))}
+    <>
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+              {columns.map((column) => <th key={column} className="whitespace-nowrap px-2 py-2 font-semibold">{pretty(column)}</th>)}
+              {canManage ? <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Manage</th> : null}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={String(row.id ?? JSON.stringify(row))} className="border-b border-slate-100 last:border-0">
+                {columns.map((column) => (
+                  <td key={column} className="max-w-72 truncate whitespace-nowrap px-2 py-3 text-slate-700">
+                    {column === "status" || column === "priority" ? <Status value={String(row[column] ?? "")} /> : formatCell(row[column])}
+                  </td>
+                ))}
+                {canManage ? (
+                  <td className="whitespace-nowrap px-2 py-3 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50" onClick={() => setEditing(row)}>
+                        <Edit3 size={13} /> Edit
+                      </button>
+                      <button className="inline-flex items-center gap-1 rounded-md border border-rose-200 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50" onClick={() => deleteRow(row)}>
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </div>
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {editing && resource && runAction ? (
+        <EditRecordDialog
+          row={editing}
+          resource={resource}
+          onClose={() => setEditing(null)}
+          onSave={(payload) => runAction("Record updated.", () => apiPut(`/api/${resource}/${editing.id}`, payload)).then(() => setEditing(null))}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function EditRecordDialog({ row, resource, onClose, onSave }: { row: Row; resource: string; onClose: () => void; onSave: (payload: Row) => Promise<void> }) {
+  const fields = Object.keys(row).filter((key) => !["id", "propertyId", "passwordHash", "createdAt", "updatedAt"].includes(key));
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const payload: Row = {};
+    fields.forEach((field) => {
+      const original = row[field];
+      const value = String(formData.get(field) ?? "");
+      payload[field] = typeof original === "number" ? Number(value || 0) : value;
+    });
+    onSave(payload);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/50 px-4 py-6">
+      <form className="w-full max-w-2xl rounded-lg bg-white shadow-xl" onSubmit={submit}>
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+          <div>
+            <h3 className="font-semibold text-slate-950">Edit {pretty(resource)}</h3>
+            <p className="text-xs text-slate-500">Record ID: {String(row.id)}</p>
+          </div>
+          <button type="button" className="rounded-md p-2 text-slate-500 hover:bg-slate-100" onClick={onClose} aria-label="Close editor">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="grid gap-3 p-4 sm:grid-cols-2">
+          {fields.map((field) => {
+            const value = row[field];
+            const textValue = String(value ?? "");
+            const isLong = textValue.length > 80 || field.toLowerCase().includes("json") || field.toLowerCase().includes("description") || field.toLowerCase().includes("body") || field.toLowerCase().includes("notes");
+            return (
+              <label key={field} className={isLong ? "block sm:col-span-2" : "block"}>
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{pretty(field)}</span>
+                {isLong ? (
+                  <textarea name={field} defaultValue={textValue} className="mt-1 min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-950" />
+                ) : (
+                  <input name={field} type={typeof value === "number" ? "number" : inferInputType(field)} defaultValue={textValue} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-950" />
+                )}
+              </label>
+            );
+          })}
+        </div>
+        <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 sm:flex-row sm:justify-end">
+          <button type="button" className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700" onClick={onClose}>Cancel</button>
+          <button className="inline-flex items-center justify-center gap-2 rounded-md bg-slate-950 px-3 py-2 text-sm font-medium text-white">
+            <Save size={16} /> Save changes
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -795,6 +897,15 @@ function pretty(value: string) {
   return value.replaceAll("_", " ").replace(/([A-Z])/g, " $1").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function inferInputType(field: string) {
+  const normalized = field.toLowerCase();
+  if (normalized.includes("email")) return "email";
+  if (normalized.includes("phone")) return "tel";
+  if (normalized.endsWith("date") || normalized === "paidat") return "date";
+  if (normalized.endsWith("at")) return "datetime-local";
+  return "text";
+}
+
 function money(value: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
 }
@@ -816,6 +927,24 @@ async function apiPost<T>(url: string, body: Row): Promise<T> {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error ?? "Request failed");
+  return payload.data as T;
+}
+
+async function apiPut<T>(url: string, body: Row): Promise<T> {
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error ?? "Request failed");
+  return payload.data as T;
+}
+
+async function apiDelete<T>(url: string): Promise<T> {
+  const response = await fetch(url, { method: "DELETE" });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error ?? "Request failed");
   return payload.data as T;
