@@ -11,6 +11,7 @@ import {
   FileText,
   Home,
   Loader2,
+  LogOut,
   Menu,
   Package,
   Plus,
@@ -87,6 +88,13 @@ const resources = [
 
 const today = new Date().toISOString().slice(0, 10);
 const month = new Date().toISOString().slice(0, 7);
+const demoAccounts = [
+  ["admin@sunrisepg.test", "Super Admin"],
+  ["owner@sunrisepg.test", "Owner"],
+  ["accounts@sunrisepg.test", "Accountant"],
+  ["care@sunrisepg.test", "Caretaker"],
+  ["resident@sunrisepg.test", "Resident"],
+] as const;
 
 export default function HomePage() {
   const [session, setSession] = useState<SessionUser | null>(null);
@@ -96,16 +104,23 @@ export default function HomePage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loginForm, setLoginForm] = useState({ email: "admin@sunrisepg.test", password: "Demo@12345" });
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
-  async function load() {
+  async function load(options: { autoLogin?: boolean } = {}) {
     setLoading(true);
     setToast(null);
     try {
       const me = await apiGet<SessionUser | null>("/api/auth/me");
-      if (!me) {
+      if (!me && options.autoLogin) {
         await apiPost<SessionUser>("/api/auth/login", { email: "admin@sunrisepg.test", password: "Demo@12345" });
+      }
+      if (!me && !options.autoLogin) {
+        setSession(null);
+        setDashboard(null);
+        setLists({});
+        return;
       }
       const [user, dash, ...resourceLists] = await Promise.all([
         apiGet<SessionUser>("/api/auth/me"),
@@ -123,10 +138,9 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    // Initial app hydration is intentionally client-side because demo auth and
-    // the in-memory adapter are session-driven.
+    // Initial app hydration keeps the original demo-friendly behavior.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
+    load({ autoLogin: true });
   }, []);
 
   const filtered = useMemo(() => {
@@ -146,6 +160,38 @@ export default function HomePage() {
       setToast({ tone: "success", text: label });
     } catch (error) {
       setToast({ tone: "error", text: error instanceof Error ? error.message : "Action failed." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setToast(null);
+    try {
+      await apiPost<SessionUser>("/api/auth/login", loginForm);
+      await load();
+      setToast({ tone: "success", text: "Signed in." });
+    } catch (error) {
+      setToast({ tone: "error", text: error instanceof Error ? error.message : "Login failed." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleLogout() {
+    setSaving(true);
+    setToast(null);
+    try {
+      await apiPost<{ success: boolean }>("/api/auth/logout", {});
+      setSession(null);
+      setDashboard(null);
+      setLists({});
+      setQuery("");
+      setToast({ tone: "success", text: "Signed out." });
+    } catch (error) {
+      setToast({ tone: "error", text: error instanceof Error ? error.message : "Logout failed." });
     } finally {
       setSaving(false);
     }
@@ -188,7 +234,13 @@ export default function HomePage() {
                   <Search size={16} className="text-slate-400" />
                   <input className="min-w-0 bg-transparent text-sm outline-none sm:w-64" placeholder="Search all loaded records..." value={query} onChange={(event) => setQuery(event.target.value)} />
                 </div>
-                <Badge tone="blue">{session?.role?.replaceAll("_", " ") ?? "Loading"}</Badge>
+                {session ? <Badge tone="blue">{session.role.replaceAll("_", " ")}</Badge> : null}
+                {session ? (
+                  <button className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60" onClick={handleLogout} disabled={saving}>
+                    <LogOut size={16} />
+                    Logout
+                  </button>
+                ) : null}
               </div>
             </div>
           </header>
@@ -200,13 +252,61 @@ export default function HomePage() {
               </div>
             ) : null}
             {loading ? <LoadingGrid /> : null}
-            {!loading ? (
+            {!loading && !session ? (
+              <LoginPanel form={loginForm} setForm={setLoginForm} saving={saving} onSubmit={handleLogin} />
+            ) : null}
+            {!loading && session ? (
               <AppContent active={active} dashboard={dashboard} lists={filtered} rawLists={lists} saving={saving} runAction={runAction} />
             ) : null}
           </div>
         </section>
       </div>
     </main>
+  );
+}
+
+function LoginPanel({
+  form,
+  setForm,
+  saving,
+  onSubmit,
+}: {
+  form: { email: string; password: string };
+  setForm: (form: { email: string; password: string }) => void;
+  saving: boolean;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <section className="mx-auto max-w-md">
+      <Panel title="Sign In">
+        <form className="space-y-4" onSubmit={onSubmit}>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {demoAccounts.map(([email, label]) => (
+              <button
+                className={`rounded-md border px-3 py-2 text-left text-sm font-medium ${form.email === email ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
+                key={email}
+                type="button"
+                onClick={() => setForm({ email, password: "Demo@12345" })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase text-slate-500">Email</span>
+            <input className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase text-slate-500">Password</span>
+            <input className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400" type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+          </label>
+          <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60" disabled={saving}>
+            {saving ? <Loader2 className="animate-spin" size={16} /> : <ShieldCheck size={16} />}
+            Sign in
+          </button>
+        </form>
+      </Panel>
+    </section>
   );
 }
 

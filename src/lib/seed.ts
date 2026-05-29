@@ -96,4 +96,5 @@ export const demoData: { [K in keyof EntityMap]: EntityMap[K][] } = {
     { id: "set_001", propertyId: "prop_001", key: "late_fee_rules", valueJson: "{\"graceDays\":5,\"dailyFee\":50,\"maxFee\":1000}", updatedAt: now },
     { id: "set_002", propertyId: "prop_001", key: "tax_settings", valueJson: "{\"enabled\":false,\"gstPercent\":0}", updatedAt: now },
   ],
+  documents: [],
 };

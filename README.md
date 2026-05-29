@@ -72,6 +72,12 @@ See [docs/sheets-schema.md](./docs/sheets-schema.md). Required core sheets:
 
 See [docs/api.md](./docs/api.md).
 
+## Project Summary And Implementation Plan
+
+See [docs/project-summary-implementation-plan.md](./docs/project-summary-implementation-plan.md) for the architecture summary, Google Sheets database design, Drive/Docs storage plan, OAuth scopes, API setup, optimized implementation roadmap, and low-cost deployment recommendations.
+
+For the recommended free-tier Google Workspace backend, see [docs/apps-script-setup.md](./docs/apps-script-setup.md).
+
 ## Core Code Files
 
 - `src/lib/models.ts` - typed domain records and Google Sheet column order.

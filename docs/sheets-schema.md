@@ -93,3 +93,8 @@ Columns: `id`, `propertyId`, `actorUserId`, `action`, `entity`, `entityId`, `det
 Columns: `id`, `propertyId`, `key`, `valueJson`, `updatedAt`
 
 Example keys: `late_fee_rules`, `tax_settings`, `room_types`, `custom_fields`, `notification_templates`.
+
+### documents
+Columns: `id`, `propertyId`, `type`, `title`, `driveFileId`, `docId`, `relatedEntity`, `relatedEntityId`, `status`, `createdAt`, `updatedAt`
+
+Use this sheet to track Google Docs created by Apps Script, such as rental agreements, policy documents, notice drafts, resident templates, and staff documents.
