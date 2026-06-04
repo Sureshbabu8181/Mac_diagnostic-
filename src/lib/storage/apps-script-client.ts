@@ -5,7 +5,8 @@ type AppsScriptAction =
   | "update"
   | "softDelete"
   | "uploadFile"
-  | "createDocument";
+  | "createDocument"
+  | "dashboard";
 
 type AppsScriptResponse<T> = {
   data?: T;

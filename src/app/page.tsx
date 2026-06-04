@@ -66,25 +66,18 @@ const modules: { key: ModuleKey; label: string; icon: typeof Home }[] = [
   { key: "settings", label: "Settings", icon: Settings },
 ];
 
-const resources = [
-  "residents",
-  "rooms",
-  "beds",
-  "allocations",
-  "invoices",
-  "payments",
-  "complaints",
-  "maintenance_logs",
-  "visitors",
-  "inventory_items",
-  "inventory_transactions",
-  "expenses",
-  "staff",
-  "notices",
-  "mess_plans",
-  "settings",
-  "audit_logs",
-];
+const moduleResources: Record<ModuleKey, string[]> = {
+  dashboard: [],
+  residents: ["residents", "rooms", "beds"],
+  rooms: ["rooms", "beds"],
+  billing: ["allocations", "invoices", "payments"],
+  maintenance: ["residents", "complaints", "maintenance_logs"],
+  visitors: ["residents", "visitors"],
+  meals: ["mess_plans", "notices"],
+  inventory: ["inventory_items", "inventory_transactions"],
+  reports: ["invoices", "payments", "complaints", "inventory_items", "expenses", "residents", "beds"],
+  settings: ["users", "expenses", "audit_logs"],
+};
 
 const today = new Date().toISOString().slice(0, 10);
 const month = new Date().toISOString().slice(0, 7);
@@ -96,6 +89,14 @@ const demoAccounts = [
   ["resident@sunrisepg.test", "Resident"],
 ] as const;
 
+const roleModules: Record<string, ModuleKey[]> = {
+  SUPER_ADMIN: ["dashboard", "residents", "rooms", "billing", "maintenance", "visitors", "meals", "inventory", "reports", "settings"],
+  OWNER_MANAGER: ["dashboard", "residents", "rooms", "billing", "maintenance", "visitors", "meals", "inventory", "reports", "settings"],
+  ACCOUNTANT: ["dashboard", "billing", "reports", "settings"],
+  CARETAKER: ["dashboard", "residents", "rooms", "maintenance", "visitors", "inventory"],
+  RESIDENT: ["dashboard", "maintenance", "meals", "visitors"],
+};
+
 export default function HomePage() {
   const [session, setSession] = useState<SessionUser | null>(null);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -103,12 +104,13 @@ export default function HomePage() {
   const [active, setActive] = useState<ModuleKey>("dashboard");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [moduleLoading, setModuleLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: "admin@sunrisepg.test", password: "Demo@12345" });
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
-  async function load(options: { autoLogin?: boolean } = {}) {
+  async function load(options: { autoLogin?: boolean; activeModule?: ModuleKey; forceResources?: boolean } = {}) {
     setLoading(true);
     setToast(null);
     try {
@@ -122,14 +124,14 @@ export default function HomePage() {
         setLists({});
         return;
       }
-      const [user, dash, ...resourceLists] = await Promise.all([
+      const activeModule = options.activeModule ?? active;
+      const [user, dash] = await Promise.all([
         apiGet<SessionUser>("/api/auth/me"),
         apiGet<Dashboard>("/api/dashboard"),
-        ...resources.map((resource) => apiGet<ApiList>(`/api/${resource}?pageSize=250`)),
       ]);
       setSession(user);
       setDashboard(dash);
-      setLists(Object.fromEntries(resources.map((resource, index) => [resource, resourceLists[index]])));
+      await loadResources(activeModule, { force: options.forceResources });
     } catch (error) {
       setToast({ tone: "error", text: error instanceof Error ? error.message : "Could not load app data." });
     } finally {
@@ -137,11 +139,41 @@ export default function HomePage() {
     }
   }
 
+  async function loadResources(moduleKey: ModuleKey, options: { force?: boolean } = {}) {
+    const needed = getModuleResources(moduleKey, session?.role);
+    const missing = options.force ? needed : needed.filter((resource) => !lists[resource]);
+    if (!missing.length) return;
+    setModuleLoading(true);
+    try {
+      const resourceLists = await Promise.all(missing.map((resource) => apiGet<ApiList>(`/api/${resource}?pageSize=250`)));
+      setLists((current) => ({
+        ...current,
+        ...Object.fromEntries(missing.map((resource, index) => [resource, resourceLists[index]])),
+      }));
+    } finally {
+      setModuleLoading(false);
+    }
+  }
+
   useEffect(() => {
     // Initial app hydration keeps the original demo-friendly behavior.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load({ autoLogin: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!session || loading) return;
+    if (!canAccessModule(session.role, active)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActive("dashboard");
+      return;
+    }
+    loadResources(active).catch((error) => {
+      setToast({ tone: "error", text: error instanceof Error ? error.message : "Could not load module data." });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, session?.id]);
 
   const filtered = useMemo(() => {
     const needle = query.toLowerCase();
@@ -156,7 +188,7 @@ export default function HomePage() {
     setToast(null);
     try {
       await task();
-      await load();
+      await load({ activeModule: active, forceResources: true });
       setToast({ tone: "success", text: label });
     } catch (error) {
       setToast({ tone: "error", text: error instanceof Error ? error.message : "Action failed." });
@@ -201,7 +233,7 @@ export default function HomePage() {
     <main className="min-h-screen bg-slate-50">
       <div className="flex min-h-screen">
         <aside className="hidden w-72 shrink-0 border-r border-slate-200 bg-white lg:block">
-          <Sidebar active={active} setActive={setActive} />
+          <Sidebar active={active} role={session?.role} setActive={setActive} />
         </aside>
 
         {menuOpen ? (
@@ -212,7 +244,7 @@ export default function HomePage() {
                   <X size={20} />
                 </button>
               </div>
-              <Sidebar active={active} setActive={(key) => { setActive(key); setMenuOpen(false); }} />
+              <Sidebar active={active} role={session?.role} setActive={(key) => { setActive(key); setMenuOpen(false); }} />
             </aside>
           </div>
         ) : null}
@@ -256,7 +288,15 @@ export default function HomePage() {
               <LoginPanel form={loginForm} setForm={setLoginForm} saving={saving} onSubmit={handleLogin} />
             ) : null}
             {!loading && session ? (
-              <AppContent active={active} dashboard={dashboard} lists={filtered} rawLists={lists} saving={saving} runAction={runAction} />
+              <>
+                {moduleLoading ? (
+                  <div className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                    <Loader2 className="animate-spin" size={16} />
+                    Loading module data
+                  </div>
+                ) : null}
+                <AppContent active={active} dashboard={dashboard} lists={filtered} rawLists={lists} saving={saving} session={session} runAction={runAction} />
+              </>
             ) : null}
           </div>
         </section>
@@ -316,6 +356,7 @@ function AppContent({
   lists,
   rawLists,
   saving,
+  session,
   runAction,
 }: {
   active: ModuleKey;
@@ -323,6 +364,7 @@ function AppContent({
   lists: Lists;
   rawLists: Lists;
   saving: boolean;
+  session: SessionUser;
   runAction: <T>(label: string, task: () => Promise<T>) => Promise<void>;
 }) {
   const vacantBeds = (rawLists.beds?.rows ?? []).filter((bed) => bed.status === "vacant");
@@ -635,6 +677,23 @@ function AppContent({
   return (
     <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
       <div className="space-y-4">
+        {["SUPER_ADMIN", "OWNER_MANAGER"].includes(session.role) ? (
+          <Panel title="Create User">
+            <SmartForm
+              saving={saving}
+              submitLabel="Create user"
+              fields={[
+                ["name", "Name", "text"],
+                ["email", "Email", "email"],
+                ["password", "Password", "text", "Demo@12345"],
+                ["role", "Role", "select", session.role === "SUPER_ADMIN" ? ["SUPER_ADMIN", "OWNER_MANAGER", "ACCOUNTANT", "CARETAKER", "RESIDENT"] : ["OWNER_MANAGER", "ACCOUNTANT", "CARETAKER", "RESIDENT"]],
+                ["residentId", "Resident ID", "text"],
+                ["status", "Status", "select", ["active", "inactive"]],
+              ]}
+              onSubmit={(payload) => runAction("User created.", () => apiPost("/api/users", payload))}
+            />
+          </Panel>
+        ) : null}
         <Panel title="Expense Entry">
           <SmartForm
             saving={saving}
@@ -655,6 +714,11 @@ function AppContent({
         </Panel>
       </div>
       <div className="space-y-4">
+        {["SUPER_ADMIN", "OWNER_MANAGER"].includes(session.role) ? (
+          <Panel title="Users">
+            <DataTable resource="users" rows={lists.users?.rows ?? []} columns={["name", "email", "role", "residentId", "status"]} runAction={runAction} />
+          </Panel>
+        ) : null}
         <Panel title="Expenses"><DataTable resource="expenses" rows={lists.expenses?.rows ?? []} columns={["category", "amount", "paidAt", "vendor", "status"]} runAction={runAction} /></Panel>
         <Panel title="Audit Logs"><DataTable resource="audit_logs" rows={lists.audit_logs?.rows ?? []} columns={["actorUserId", "action", "entity", "entityId", "createdAt"]} runAction={runAction} /></Panel>
       </div>
@@ -662,7 +726,8 @@ function AppContent({
   );
 }
 
-function Sidebar({ active, setActive }: { active: ModuleKey; setActive: (key: ModuleKey) => void }) {
+function Sidebar({ active, role, setActive }: { active: ModuleKey; role?: string; setActive: (key: ModuleKey) => void }) {
+  const visibleModules = modules.filter((module) => !role || canAccessModule(role, module.key));
   return (
     <div className="flex h-full flex-col px-4 py-5">
       <div className="mb-6 flex items-center gap-3 px-2">
@@ -675,7 +740,7 @@ function Sidebar({ active, setActive }: { active: ModuleKey; setActive: (key: Mo
         </div>
       </div>
       <nav className="space-y-1">
-        {modules.map((module) => {
+        {visibleModules.map((module) => {
           const Icon = module.icon;
           return (
             <button
@@ -696,6 +761,17 @@ function Sidebar({ active, setActive }: { active: ModuleKey; setActive: (key: Mo
       </div>
     </div>
   );
+}
+
+function canAccessModule(role: string, module: ModuleKey) {
+  return (roleModules[role] ?? ["dashboard"]).includes(module);
+}
+
+function getModuleResources(module: ModuleKey, role?: string) {
+  const resources = moduleResources[module] ?? [];
+  if (module !== "settings") return resources;
+  if (role === "SUPER_ADMIN" || role === "OWNER_MANAGER") return resources;
+  return resources.filter((resource) => resource !== "users" && resource !== "audit_logs");
 }
 
 type FieldConfig = [name: string, label: string, type: "text" | "email" | "tel" | "number" | "date" | "month" | "datetime-local" | "select" | "textarea", options?: string | string[] | string[][]];
