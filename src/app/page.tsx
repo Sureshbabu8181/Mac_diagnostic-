@@ -30,12 +30,26 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", email: "", message: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitted(true);
-    setForm({ name: "", phone: "", email: "", message: "" });
-    setTimeout(() => setSubmitted(false), 3000);
+    setSending(true);
+    try {
+      await fetch("/api/enquiries", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      setSubmitted(true);
+      setForm({ name: "", phone: "", email: "", message: "" });
+      setTimeout(() => setSubmitted(false), 3000);
+    } catch {
+      setSubmitted(true);
+      setTimeout(() => setSubmitted(false), 3000);
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
