@@ -272,6 +272,15 @@ export type Setting = {
   updatedAt: string;
 };
 
+export type Enquiry = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  message: string;
+  createdAt: string;
+};
+
 export type WorkspaceDocument = {
   id: string;
   propertyId: string;
@@ -307,6 +316,7 @@ export type EntityMap = {
   audit_logs: AuditLog;
   settings: Setting;
   documents: WorkspaceDocument;
+  enquiries: Enquiry;
 };
 
 export type EntityName = keyof EntityMap;
@@ -332,6 +342,7 @@ export const entityNames = [
   "audit_logs",
   "settings",
   "documents",
+  "enquiries",
 ] as const satisfies EntityName[];
 
 export const sheetColumns: Record<EntityName, string[]> = {
@@ -355,4 +366,5 @@ export const sheetColumns: Record<EntityName, string[]> = {
   audit_logs: ["id", "propertyId", "actorUserId", "action", "entity", "entityId", "detailsJson", "createdAt"],
   settings: ["id", "propertyId", "key", "valueJson", "updatedAt"],
   documents: ["id", "propertyId", "type", "title", "driveFileId", "docId", "relatedEntity", "relatedEntityId", "status", "createdAt", "updatedAt"],
+  enquiries: ["id", "name", "phone", "email", "message", "createdAt"],
 };
