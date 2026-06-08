@@ -76,7 +76,7 @@ const moduleResources: Record<ModuleKey, string[]> = {
   meals: ["mess_plans", "notices"],
   inventory: ["inventory_items", "inventory_transactions"],
   reports: ["invoices", "payments", "complaints", "inventory_items", "expenses", "residents", "beds"],
-  settings: ["users", "expenses", "audit_logs"],
+  settings: ["users", "expenses", "audit_logs", "enquiries"],
 };
 
 const today = new Date().toISOString().slice(0, 10);
@@ -650,6 +650,7 @@ function AppContent({
         ) : null}
         <Panel title="Expenses"><DataTable resource="expenses" rows={lists.expenses?.rows ?? []} columns={["category", "amount", "paidAt", "vendor", "status"]} runAction={runAction} /></Panel>
         <Panel title="Audit Logs"><DataTable resource="audit_logs" rows={lists.audit_logs?.rows ?? []} columns={["actorUserId", "action", "entity", "entityId", "createdAt"]} runAction={runAction} /></Panel>
+        <Panel title="Enquiries"><DataTable resource="enquiries" rows={lists.enquiries?.rows ?? []} columns={["name", "phone", "email", "message", "createdAt"]} runAction={runAction} /></Panel>
       </div>
     </section>
   );
