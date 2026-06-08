@@ -1,1134 +1,309 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import {
-  BadgeIndianRupee,
-  BedDouble,
-  Building2,
-  ClipboardList,
-  Download,
-  Edit3,
-  FileText,
-  Home,
-  Loader2,
-  LogOut,
-  Menu,
-  Package,
-  Plus,
-  Search,
-  Settings,
-  ShieldCheck,
-  Save,
-  Trash2,
-  Upload,
-  Users,
-  Utensils,
-  Wrench,
-  X,
-} from "lucide-react";
-import { Badge, EmptyState, Panel, StatCard } from "@/components/ui";
+import { useState } from "react";
+import { BedDouble, Building2, ChevronRight, Home, Mail, MapPin, Menu, Phone, ShieldCheck, Star, Users, Utensils, Wifi, X } from "lucide-react";
 
-type Row = Record<string, string | number | boolean | undefined>;
-type ApiList = { rows: Row[]; total: number; page: number; pageSize: number };
-type Lists = Record<string, ApiList>;
-type SessionUser = { id: string; email: string; name: string; role: string; propertyId: string };
-
-type Dashboard = {
-  summary: {
-    occupancyRate: number;
-    occupiedBeds: number;
-    availableBeds: number;
-    totalBeds: number;
-    dueRent: number;
-    collectedRent: number;
-    pendingComplaints: number;
-    todayCheckIns: number;
-    todayCheckOuts: number;
-    lowStockItems: number;
-    monthlyExpenses: number;
-    activeResidents: number;
-  };
-  recentActivity: { id: string; type: string; label: string; at: string }[];
-};
-
-type ModuleKey = "dashboard" | "residents" | "rooms" | "billing" | "maintenance" | "visitors" | "meals" | "inventory" | "reports" | "settings";
-
-const modules: { key: ModuleKey; label: string; icon: typeof Home }[] = [
-  { key: "dashboard", label: "Dashboard", icon: Home },
-  { key: "residents", label: "Residents", icon: Users },
-  { key: "rooms", label: "Rooms & Beds", icon: BedDouble },
-  { key: "billing", label: "Billing", icon: BadgeIndianRupee },
-  { key: "maintenance", label: "Maintenance", icon: Wrench },
-  { key: "visitors", label: "Visitors", icon: ClipboardList },
-  { key: "meals", label: "Meals & Notices", icon: Utensils },
-  { key: "inventory", label: "Inventory", icon: Package },
-  { key: "reports", label: "Reports", icon: FileText },
-  { key: "settings", label: "Settings", icon: Settings },
+const rooms = [
+  { name: "Single Room", price: "₹9,500/mo", desc: "Private room with attached bathroom, study table, and wardrobe. Perfect for professionals.", features: ["Attached Bathroom", "Study Table", "Wardrobe", "Wi-Fi"], img: "https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?w=600&h=400&fit=crop" },
+  { name: "Double Sharing", price: "₹6,500/mo", desc: "Spacious room for two with shared amenities. Ideal for students and colleagues.", features: ["Shared Bathroom", "Bunk Beds", "Study Area", "Wi-Fi"], img: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop" },
+  { name: "Triple Sharing", price: "₹5,000/mo", desc: "Affordable triple-sharing room with all essential amenities included.", features: ["Almirah", "Study Desk", "Fan/AC", "Wi-Fi"], img: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&h=400&fit=crop" },
+  { name: "Dormitory", price: "₹3,500/mo", desc: "Budget-friendly dormitory beds with common area and locker facility.", features: ["Personal Locker", "Common Room", "24/7 Security", "Wi-Fi"], img: "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=600&h=400&fit=crop" },
 ];
 
-const moduleResources: Record<ModuleKey, string[]> = {
-  dashboard: [],
-  residents: ["residents", "rooms", "beds"],
-  rooms: ["rooms", "beds"],
-  billing: ["allocations", "invoices", "payments"],
-  maintenance: ["residents", "complaints", "maintenance_logs"],
-  visitors: ["residents", "visitors"],
-  meals: ["mess_plans", "notices"],
-  inventory: ["inventory_items", "inventory_transactions"],
-  reports: ["invoices", "payments", "complaints", "inventory_items", "expenses", "residents", "beds"],
-  settings: ["users", "expenses", "audit_logs"],
-};
+const reviews = [
+  { name: "Rahul Sharma", text: "Best PG in the area! Clean rooms, great food, and very cooperative staff. Highly recommend for working professionals.", rating: 5, role: "Software Engineer" },
+  { name: "Priya Patel", text: "Been staying here for 6 months. The facilities are excellent and the location is very convenient. Feel like home!", rating: 5, role: "Designer" },
+  { name: "Amit Verma", text: "Great value for money. The mess food is tasty and the rooms are well maintained. Security is top notch.", rating: 4, role: "Student" },
+  { name: "Sneha Reddy", text: "Switched from another PG to this and it's been a great experience. Cleanliness and hygiene are priorities here.", rating: 5, role: "Doctor" },
+];
 
-const today = new Date().toISOString().slice(0, 10);
-const month = new Date().toISOString().slice(0, 7);
-const demoAccounts = [
-  ["admin@sunrisepg.test", "Super Admin"],
-  ["owner@sunrisepg.test", "Owner"],
-  ["accounts@sunrisepg.test", "Accountant"],
-  ["care@sunrisepg.test", "Caretaker"],
-  ["resident@sunrisepg.test", "Resident"],
-] as const;
+const services = [
+  { icon: Wifi, title: "High-Speed Wi-Fi", desc: "Stay connected with dedicated high-speed internet throughout the property." },
+  { icon: Utensils, title: "Healthy Meals", desc: "Freshly prepared vegetarian and non-vegetarian meals served three times a day." },
+  { icon: ShieldCheck, title: "24/7 Security", desc: "Round-the-clock security with CCTV surveillance and secure access system." },
+  { icon: Home, title: "Fully Furnished", desc: "All rooms come with beds, wardrobes, study tables, and essential furniture." },
+  { icon: Users, title: "Community Events", desc: "Regular social events and gatherings to build a friendly community atmosphere." },
+  { icon: Building2, title: "Prime Location", desc: "Located close to IT hubs, colleges, hospitals, and public transport." },
+];
 
-const roleModules: Record<string, ModuleKey[]> = {
-  SUPER_ADMIN: ["dashboard", "residents", "rooms", "billing", "maintenance", "visitors", "meals", "inventory", "reports", "settings"],
-  OWNER_MANAGER: ["dashboard", "residents", "rooms", "billing", "maintenance", "visitors", "meals", "inventory", "reports", "settings"],
-  ACCOUNTANT: ["dashboard", "billing", "reports", "settings"],
-  CARETAKER: ["dashboard", "residents", "rooms", "maintenance", "visitors", "inventory"],
-  RESIDENT: ["dashboard", "maintenance", "meals", "visitors"],
-};
-
-export default function HomePage() {
-  const [session, setSession] = useState<SessionUser | null>(null);
-  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [lists, setLists] = useState<Lists>({});
-  const [active, setActive] = useState<ModuleKey>("dashboard");
-  const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [moduleLoading, setModuleLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [loginForm, setLoginForm] = useState({ email: "admin@sunrisepg.test", password: "Demo@12345" });
+export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [toast, setToast] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  const [form, setForm] = useState({ name: "", phone: "", email: "", message: "" });
+  const [submitted, setSubmitted] = useState(false);
 
-  async function load(options: { autoLogin?: boolean; activeModule?: ModuleKey; forceResources?: boolean } = {}) {
-    setLoading(true);
-    setToast(null);
-    try {
-      const me = await apiGet<SessionUser | null>("/api/auth/me");
-      if (!me && options.autoLogin) {
-        await apiPost<SessionUser>("/api/auth/login", { email: "admin@sunrisepg.test", password: "Demo@12345" });
-      }
-      if (!me && !options.autoLogin) {
-        setSession(null);
-        setDashboard(null);
-        setLists({});
-        return;
-      }
-      const activeModule = options.activeModule ?? active;
-      const [user, dash] = await Promise.all([
-        apiGet<SessionUser>("/api/auth/me"),
-        apiGet<Dashboard>("/api/dashboard"),
-      ]);
-      setSession(user);
-      setDashboard(dash);
-      await loadResources(activeModule, { force: options.forceResources });
-    } catch (error) {
-      setToast({ tone: "error", text: error instanceof Error ? error.message : "Could not load app data." });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadResources(moduleKey: ModuleKey, options: { force?: boolean } = {}) {
-    const needed = getModuleResources(moduleKey, session?.role);
-    const missing = options.force ? needed : needed.filter((resource) => !lists[resource]);
-    if (!missing.length) return;
-    setModuleLoading(true);
-    try {
-      const resourceLists = await Promise.all(missing.map((resource) => apiGet<ApiList>(`/api/${resource}?pageSize=250`)));
-      setLists((current) => ({
-        ...current,
-        ...Object.fromEntries(missing.map((resource, index) => [resource, resourceLists[index]])),
-      }));
-    } finally {
-      setModuleLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    // Initial app hydration keeps the original demo-friendly behavior.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load({ autoLogin: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!session || loading) return;
-    if (!canAccessModule(session.role, active)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActive("dashboard");
-      return;
-    }
-    loadResources(active).catch((error) => {
-      setToast({ tone: "error", text: error instanceof Error ? error.message : "Could not load module data." });
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, session?.id]);
-
-  const filtered = useMemo(() => {
-    const needle = query.toLowerCase();
-    return Object.fromEntries(Object.entries(lists).map(([key, list]) => [
-      key,
-      { ...list, rows: list.rows.filter((row) => Object.values(row).join(" ").toLowerCase().includes(needle)) },
-    ]));
-  }, [lists, query]);
-
-  async function runAction<T>(label: string, task: () => Promise<T>) {
-    setSaving(true);
-    setToast(null);
-    try {
-      await task();
-      await load({ activeModule: active, forceResources: true });
-      setToast({ tone: "success", text: label });
-    } catch (error) {
-      setToast({ tone: "error", text: error instanceof Error ? error.message : "Action failed." });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleLogin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSaving(true);
-    setToast(null);
-    try {
-      await apiPost<SessionUser>("/api/auth/login", loginForm);
-      await load();
-      setToast({ tone: "success", text: "Signed in." });
-    } catch (error) {
-      setToast({ tone: "error", text: error instanceof Error ? error.message : "Login failed." });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleLogout() {
-    setSaving(true);
-    setToast(null);
-    try {
-      await apiPost<{ success: boolean }>("/api/auth/logout", {});
-      setSession(null);
-      setDashboard(null);
-      setLists({});
-      setQuery("");
-      setToast({ tone: "success", text: "Signed out." });
-    } catch (error) {
-      setToast({ tone: "error", text: error instanceof Error ? error.message : "Logout failed." });
-    } finally {
-      setSaving(false);
-    }
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitted(true);
+    setForm({ name: "", phone: "", email: "", message: "" });
+    setTimeout(() => setSubmitted(false), 3000);
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-72 shrink-0 border-r border-slate-200 bg-white lg:block">
-          <Sidebar active={active} role={session?.role} setActive={setActive} />
-        </aside>
-
-        {menuOpen ? (
-          <div className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" onClick={() => setMenuOpen(false)}>
-            <aside className="h-full w-80 bg-white" onClick={(event) => event.stopPropagation()}>
-              <div className="flex justify-end p-3">
-                <button className="rounded-md p-2 hover:bg-slate-100" onClick={() => setMenuOpen(false)} aria-label="Close menu">
+    <div className="min-h-screen bg-white">
+      {/* NAVBAR */}
+      <nav className="fixed top-0 z-50 w-full border-b border-white/10 bg-white/80 backdrop-blur-lg">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900">
+              <BedDouble size={18} className="text-white" />
+            </div>
+            <span className="text-lg font-bold text-slate-900">Sunrise PG</span>
+          </div>
+          <div className="hidden items-center gap-6 md:flex">
+            <a href="#rooms" className="text-sm font-medium text-slate-600 hover:text-slate-900">Rooms</a>
+            <a href="#services" className="text-sm font-medium text-slate-600 hover:text-slate-900">Services</a>
+            <a href="#reviews" className="text-sm font-medium text-slate-600 hover:text-slate-900">Reviews</a>
+            <a href="#contact" className="text-sm font-medium text-slate-600 hover:text-slate-900">Contact</a>
+            <a href="#enquiry" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">Enquire Now</a>
+            <a href="/dashboard" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">Login</a>
+          </div>
+          <button className="rounded-md p-2 hover:bg-slate-100 md:hidden" onClick={() => setMenuOpen(true)} aria-label="Menu">
+            <Menu size={22} />
+          </button>
+        </div>
+        {menuOpen && (
+          <div className="fixed inset-0 z-50 bg-black/40 md:hidden" onClick={() => setMenuOpen(false)}>
+            <div className="ml-auto h-full w-72 bg-white p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="mb-6 flex justify-end">
+                <button className="rounded-md p-2 hover:bg-slate-100" onClick={() => setMenuOpen(false)}>
                   <X size={20} />
                 </button>
               </div>
-              <Sidebar active={active} role={session?.role} setActive={(key) => { setActive(key); setMenuOpen(false); }} />
-            </aside>
-          </div>
-        ) : null}
-
-        <section className="min-w-0 flex-1">
-          <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <div className="flex items-center gap-3">
-                <button className="rounded-md p-2 hover:bg-slate-100 lg:hidden" onClick={() => setMenuOpen(true)} aria-label="Open menu">
-                  <Menu size={22} />
-                </button>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sunrise PG</p>
-                  <h1 className="text-lg font-semibold text-slate-950 sm:text-xl">{modules.find((item) => item.key === active)?.label}</h1>
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                  <Search size={16} className="text-slate-400" />
-                  <input className="min-w-0 bg-transparent text-sm outline-none sm:w-64" placeholder="Search all loaded records..." value={query} onChange={(event) => setQuery(event.target.value)} />
-                </div>
-                {session ? <Badge tone="blue">{session.role.replaceAll("_", " ")}</Badge> : null}
-                {session ? (
-                  <button className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60" onClick={handleLogout} disabled={saving}>
-                    <LogOut size={16} />
-                    Logout
-                  </button>
-                ) : null}
+              <div className="flex flex-col gap-4">
+                <a href="#rooms" className="text-sm font-medium text-slate-700" onClick={() => setMenuOpen(false)}>Rooms</a>
+                <a href="#services" className="text-sm font-medium text-slate-700" onClick={() => setMenuOpen(false)}>Services</a>
+                <a href="#reviews" className="text-sm font-medium text-slate-700" onClick={() => setMenuOpen(false)}>Reviews</a>
+                <a href="#contact" className="text-sm font-medium text-slate-700" onClick={() => setMenuOpen(false)}>Contact</a>
+                <a href="#enquiry" className="rounded-full bg-emerald-600 px-4 py-2 text-center text-sm font-semibold text-white" onClick={() => setMenuOpen(false)}>Enquire Now</a>
+                <a href="/dashboard" className="rounded-full border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700" onClick={() => setMenuOpen(false)}>Login</a>
               </div>
             </div>
-          </header>
-
-          <div className="space-y-5 px-4 py-5 sm:px-6">
-            {toast ? (
-              <div className={`rounded-lg border px-4 py-3 text-sm ${toast.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}>
-                {toast.text}
-              </div>
-            ) : null}
-            {loading ? <LoadingGrid /> : null}
-            {!loading && !session ? (
-              <LoginPanel form={loginForm} setForm={setLoginForm} saving={saving} onSubmit={handleLogin} />
-            ) : null}
-            {!loading && session ? (
-              <>
-                {moduleLoading ? (
-                  <div className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
-                    <Loader2 className="animate-spin" size={16} />
-                    Loading module data
-                  </div>
-                ) : null}
-                <AppContent active={active} dashboard={dashboard} lists={filtered} rawLists={lists} saving={saving} session={session} runAction={runAction} />
-              </>
-            ) : null}
           </div>
-        </section>
-      </div>
-    </main>
-  );
-}
-
-function LoginPanel({
-  form,
-  setForm,
-  saving,
-  onSubmit,
-}: {
-  form: { email: string; password: string };
-  setForm: (form: { email: string; password: string }) => void;
-  saving: boolean;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-}) {
-  return (
-    <section className="mx-auto max-w-md">
-      <Panel title="Sign In">
-        <form className="space-y-4" onSubmit={onSubmit}>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {demoAccounts.map(([email, label]) => (
-              <button
-                className={`rounded-md border px-3 py-2 text-left text-sm font-medium ${form.email === email ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
-                key={email}
-                type="button"
-                onClick={() => setForm({ email, password: "Demo@12345" })}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold uppercase text-slate-500">Email</span>
-            <input className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold uppercase text-slate-500">Password</span>
-            <input className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400" type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
-          </label>
-          <button className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60" disabled={saving}>
-            {saving ? <Loader2 className="animate-spin" size={16} /> : <ShieldCheck size={16} />}
-            Sign in
-          </button>
-        </form>
-      </Panel>
-    </section>
-  );
-}
-
-function AppContent({
-  active,
-  dashboard,
-  lists,
-  rawLists,
-  saving,
-  session,
-  runAction,
-}: {
-  active: ModuleKey;
-  dashboard: Dashboard | null;
-  lists: Lists;
-  rawLists: Lists;
-  saving: boolean;
-  session: SessionUser;
-  runAction: <T>(label: string, task: () => Promise<T>) => Promise<void>;
-}) {
-  const vacantBeds = (rawLists.beds?.rows ?? []).filter((bed) => bed.status === "vacant");
-  const activeResidents = (rawLists.residents?.rows ?? []).filter((resident) => resident.status === "active");
-  const dueInvoices = (rawLists.invoices?.rows ?? []).filter((invoice) => Number(invoice.totalAmount) > Number(invoice.paidAmount));
-
-  if (active === "dashboard") {
-    return (
-      <>
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Occupancy" value={`${dashboard?.summary.occupancyRate ?? 0}%`} meta={`${dashboard?.summary.occupiedBeds ?? 0}/${dashboard?.summary.totalBeds ?? 0} beds occupied`} tone="blue" />
-          <StatCard label="Available beds" value={dashboard?.summary.availableBeds ?? 0} meta="Vacant and assignable" tone="green" />
-          <StatCard label="Due rent" value={money(dashboard?.summary.dueRent ?? 0)} meta="Pending this cycle" tone="red" />
-          <StatCard label="Collected rent" value={money(dashboard?.summary.collectedRent ?? 0)} meta="Received payments" tone="green" />
-          <StatCard label="Complaints" value={dashboard?.summary.pendingComplaints ?? 0} meta="Open or in progress" tone="amber" />
-          <StatCard label="Today" value={`${dashboard?.summary.todayCheckIns ?? 0}/${dashboard?.summary.todayCheckOuts ?? 0}`} meta="Check-ins / check-outs" />
-          <StatCard label="Low stock" value={dashboard?.summary.lowStockItems ?? 0} meta="Needs replenishment" tone="amber" />
-          <StatCard label="Expenses" value={money(dashboard?.summary.monthlyExpenses ?? 0)} meta="Current period" />
-        </section>
-        <section className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
-          <Panel title="Today’s Work Queue">
-            <WorkQueue lists={rawLists} />
-          </Panel>
-          <Panel title="Recent Activity">
-            <Activity items={dashboard?.recentActivity ?? []} />
-          </Panel>
-        </section>
-      </>
-    );
-  }
-
-  if (active === "residents") {
-    return (
-      <section className="grid gap-4 xl:grid-cols-[420px_1fr]">
-        <Panel title="Check In Resident" action={<Badge tone="green">{vacantBeds.length} vacant beds</Badge>}>
-          <SmartForm
-            saving={saving}
-            submitLabel="Check in and allocate"
-            fields={[
-              ["fullName", "Full name", "text"],
-              ["phone", "Phone", "tel"],
-              ["email", "Email", "email"],
-              ["gender", "Gender", "select", ["Female", "Male", "Other"]],
-              ["occupation", "Occupation", "text"],
-              ["kycType", "KYC type", "select", ["Aadhaar", "PAN", "Passport", "Driving License"]],
-              ["kycNumber", "KYC number", "text"],
-              ["emergencyName", "Emergency contact", "text"],
-              ["emergencyPhone", "Emergency phone", "tel"],
-              ["roomId", "Room", "select", (rawLists.rooms?.rows ?? []).map((room) => [String(room.id), `${room.building}-${room.roomNumber}`])],
-              ["bedId", "Bed", "select", vacantBeds.map((bed) => [String(bed.id), String(bed.bedNumber)])],
-              ["checkInDate", "Check-in date", "date", today],
-              ["expectedCheckOutDate", "Expected check-out", "date"],
-              ["depositAmount", "Deposit", "number", "20000"],
-              ["monthlyRent", "Monthly rent", "number", "9500"],
-            ]}
-            onSubmit={(payload) => runAction("Resident checked in and bed allocated.", () => apiPost("/api/workflows/check-in", payload))}
-          />
-        </Panel>
-        <Panel title="Residents" action={<Badge tone="blue">{lists.residents?.rows.length ?? 0} records</Badge>}>
-          <DataTable resource="residents" rows={lists.residents?.rows ?? []} columns={["fullName", "phone", "email", "occupation", "status"]} runAction={runAction} />
-        </Panel>
-      </section>
-    );
-  }
-
-  if (active === "rooms") {
-    return (
-      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
-        <div className="space-y-4">
-          <Panel title="Create Room">
-            <SmartForm
-              saving={saving}
-              submitLabel="Add room"
-              fields={[
-                ["building", "Building", "text", "A"],
-                ["floor", "Floor", "text", "1"],
-                ["roomNumber", "Room number", "text"],
-                ["roomType", "Room type", "select", ["Single", "Double Sharing", "Triple Sharing", "Dormitory"]],
-                ["capacity", "Capacity", "number", "2"],
-                ["monthlyRent", "Monthly rent", "number", "10000"],
-                ["status", "Status", "select", ["active", "maintenance"]],
-              ]}
-              onSubmit={(payload) => runAction("Room created.", () => apiPost("/api/rooms", payload))}
-            />
-          </Panel>
-          <Panel title="Create Bed">
-            <SmartForm
-              saving={saving}
-              submitLabel="Add bed"
-              fields={[
-                ["roomId", "Room", "select", (rawLists.rooms?.rows ?? []).map((room) => [String(room.id), `${room.building}-${room.roomNumber}`])],
-                ["bedNumber", "Bed number", "text"],
-                ["status", "Status", "select", ["vacant", "maintenance"]],
-              ]}
-              onSubmit={(payload) => runAction("Bed created.", () => apiPost("/api/beds", payload))}
-            />
-          </Panel>
-        </div>
-        <div className="space-y-4">
-          <Panel title="Rooms"><DataTable resource="rooms" rows={lists.rooms?.rows ?? []} columns={["building", "floor", "roomNumber", "roomType", "capacity", "monthlyRent", "status"]} runAction={runAction} /></Panel>
-          <Panel title="Beds"><DataTable resource="beds" rows={lists.beds?.rows ?? []} columns={["bedNumber", "roomId", "status", "currentResidentId"]} runAction={runAction} /></Panel>
-        </div>
-      </section>
-    );
-  }
-
-  if (active === "billing") {
-    return (
-      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
-        <div className="space-y-4">
-          <Panel title="Generate Monthly Rent">
-            <SmartForm
-              saving={saving}
-              submitLabel="Generate invoices"
-              fields={[
-                ["month", "Month", "month", month],
-                ["dueDate", "Due date", "date", today],
-                ["messAmount", "Mess charge", "number", "2500"],
-                ["taxPercent", "Tax percent", "number", "0"],
-              ]}
-              onSubmit={(payload) => runAction("Invoices generated for active allocations.", () => apiPost("/api/workflows/generate-invoices", payload))}
-            />
-          </Panel>
-          <Panel title="Record Payment">
-            <SmartForm
-              saving={saving}
-              submitLabel="Post payment"
-              fields={[
-                ["invoiceId", "Invoice", "select", dueInvoices.map((invoice) => [String(invoice.id), `${invoice.id} due ${money(Number(invoice.totalAmount) - Number(invoice.paidAmount))}`])],
-                ["amount", "Amount", "number"],
-                ["mode", "Mode", "select", ["cash", "upi", "bank_transfer", "card", "other"]],
-                ["reference", "Reference", "text"],
-                ["notes", "Notes", "text"],
-              ]}
-              onSubmit={(payload) => runAction("Payment recorded and invoice updated.", () => apiPost("/api/workflows/record-payment", payload))}
-            />
-          </Panel>
-        </div>
-        <div className="space-y-4">
-          <Panel title="Invoices" action={<ReportActions type="defaulters" />}>
-            <DataTable resource="invoices" rows={lists.invoices?.rows ?? []} columns={["id", "residentId", "month", "totalAmount", "paidAmount", "dueDate", "status"]} runAction={runAction} />
-          </Panel>
-          <Panel title="Payments">
-            <DataTable resource="payments" rows={lists.payments?.rows ?? []} columns={["invoiceId", "residentId", "amount", "mode", "paidAt", "reference", "status"]} runAction={runAction} />
-          </Panel>
-        </div>
-      </section>
-    );
-  }
-
-  if (active === "maintenance") {
-    return (
-      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
-        <div className="space-y-4">
-          <Panel title="Create Complaint">
-            <SmartForm
-              saving={saving}
-              submitLabel="Create ticket"
-              fields={[
-                ["residentId", "Resident", "select", activeResidents.map((resident) => [String(resident.id), String(resident.fullName)])],
-                ["title", "Title", "text"],
-                ["description", "Description", "textarea"],
-                ["priority", "Priority", "select", ["low", "medium", "high", "critical"]],
-                ["status", "Status", "select", ["open", "in_progress"]],
-                ["openedAt", "Opened at", "datetime-local", new Date().toISOString().slice(0, 16)],
-              ]}
-              onSubmit={(payload) => runAction("Complaint created.", () => apiPost("/api/complaints", payload))}
-            />
-          </Panel>
-          <Panel title="Update Complaint">
-            <SmartForm
-              saving={saving}
-              submitLabel="Update status"
-              fields={[
-                ["complaintId", "Complaint", "select", (rawLists.complaints?.rows ?? []).map((complaint) => [String(complaint.id), String(complaint.title)])],
-                ["status", "Status", "select", ["open", "in_progress", "resolved", "closed"]],
-                ["actionTaken", "Action taken", "textarea"],
-                ["materialCost", "Material cost", "number", "0"],
-                ["laborCost", "Labor cost", "number", "0"],
-              ]}
-              onSubmit={(payload) => runAction("Complaint updated and maintenance log saved.", () => apiPost("/api/workflows/complaint-status", payload))}
-            />
-          </Panel>
-        </div>
-        <div className="space-y-4">
-          <Panel title="Complaints" action={<ReportActions type="complaints" />}>
-            <DataTable resource="complaints" rows={lists.complaints?.rows ?? []} columns={["title", "residentId", "priority", "status", "assignedStaffId", "openedAt", "resolvedAt"]} runAction={runAction} />
-          </Panel>
-          <Panel title="Maintenance Logs">
-            <DataTable resource="maintenance_logs" rows={lists.maintenance_logs?.rows ?? []} columns={["complaintId", "staffId", "actionTaken", "materialCost", "laborCost", "createdAt"]} runAction={runAction} />
-          </Panel>
-        </div>
-      </section>
-    );
-  }
-
-  if (active === "visitors") {
-    return (
-      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
-        <Panel title="Visitor Entry">
-          <SmartForm
-            saving={saving}
-            submitLabel="Log visitor"
-            fields={[
-              ["residentId", "Resident", "select", activeResidents.map((resident) => [String(resident.id), String(resident.fullName)])],
-              ["visitorName", "Visitor name", "text"],
-              ["visitorPhone", "Visitor phone", "tel"],
-              ["purpose", "Purpose", "text"],
-              ["timeIn", "Time in", "datetime-local", new Date().toISOString().slice(0, 16)],
-              ["guardNotes", "Guard notes", "text"],
-            ]}
-            onSubmit={(payload) => runAction("Visitor logged.", () => apiPost("/api/visitors", payload))}
-          />
-        </Panel>
-        <Panel title="Visitor Log">
-          <DataTable resource="visitors" rows={lists.visitors?.rows ?? []} columns={["visitorName", "visitorPhone", "residentId", "purpose", "timeIn", "timeOut", "guardNotes"]} runAction={runAction} />
-        </Panel>
-      </section>
-    );
-  }
-
-  if (active === "meals") {
-    return (
-      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
-        <div className="space-y-4">
-          <Panel title="Meal Plan">
-            <SmartForm
-              saving={saving}
-              submitLabel="Save plan"
-              fields={[
-                ["name", "Plan name", "text", "Standard Veg"],
-                ["monthlyCharge", "Monthly charge", "number", "2500"],
-                ["weeklyMenuJson", "Weekly menu JSON", "textarea", "{\"Mon\":\"Dal rice\",\"Tue\":\"Chapati sabzi\"}"],
-                ["status", "Status", "select", ["active", "inactive"]],
-              ]}
-              onSubmit={(payload) => runAction("Meal plan saved.", () => apiPost("/api/mess_plans", payload))}
-            />
-          </Panel>
-          <Panel title="Notice">
-            <SmartForm
-              saving={saving}
-              submitLabel="Publish notice"
-              fields={[
-                ["title", "Title", "text"],
-                ["body", "Body", "textarea"],
-                ["audience", "Audience", "select", ["all", "RESIDENT", "CARETAKER", "ACCOUNTANT"]],
-                ["publishAt", "Publish at", "datetime-local", new Date().toISOString().slice(0, 16)],
-                ["status", "Status", "select", ["active", "inactive"]],
-              ]}
-              onSubmit={(payload) => runAction("Notice published.", () => apiPost("/api/notices", payload))}
-            />
-          </Panel>
-        </div>
-        <div className="space-y-4">
-          <Panel title="Mess Plans"><DataTable resource="mess_plans" rows={lists.mess_plans?.rows ?? []} columns={["name", "monthlyCharge", "status", "weeklyMenuJson"]} runAction={runAction} /></Panel>
-          <Panel title="Notices"><DataTable resource="notices" rows={lists.notices?.rows ?? []} columns={["title", "audience", "publishAt", "expiresAt", "status"]} runAction={runAction} /></Panel>
-        </div>
-      </section>
-    );
-  }
-
-  if (active === "inventory") {
-    return (
-      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
-        <div className="space-y-4">
-          <Panel title="Create Item">
-            <SmartForm
-              saving={saving}
-              submitLabel="Add item"
-              fields={[
-                ["name", "Item name", "text"],
-                ["category", "Category", "text"],
-                ["unit", "Unit", "text", "pcs"],
-                ["currentStock", "Opening stock", "number", "0"],
-                ["reorderLevel", "Reorder level", "number", "10"],
-                ["status", "Status", "select", ["active", "inactive"]],
-              ]}
-              onSubmit={(payload) => runAction("Inventory item created.", () => apiPost("/api/inventory_items", payload))}
-            />
-          </Panel>
-          <Panel title="Stock Movement">
-            <SmartForm
-              saving={saving}
-              submitLabel="Post stock entry"
-              fields={[
-                ["itemId", "Item", "select", (rawLists.inventory_items?.rows ?? []).map((item) => [String(item.id), String(item.name)])],
-                ["type", "Type", "select", ["purchase", "issue", "consume", "adjustment"]],
-                ["quantity", "Quantity", "number"],
-                ["unitCost", "Unit cost", "number", "0"],
-                ["reference", "Reference", "text"],
-              ]}
-              onSubmit={(payload) => runAction("Stock movement posted.", () => apiPost("/api/workflows/inventory-transaction", payload))}
-            />
-          </Panel>
-        </div>
-        <div className="space-y-4">
-          <Panel title="Stock Levels" action={<ReportActions type="inventory" />}>
-            <DataTable resource="inventory_items" rows={lists.inventory_items?.rows ?? []} columns={["name", "category", "currentStock", "unit", "reorderLevel", "status"]} runAction={runAction} />
-          </Panel>
-          <Panel title="Transactions"><DataTable resource="inventory_transactions" rows={lists.inventory_transactions?.rows ?? []} columns={["itemId", "type", "quantity", "unitCost", "reference", "createdBy"]} runAction={runAction} /></Panel>
-        </div>
-      </section>
-    );
-  }
-
-  if (active === "reports") {
-    return <Reports lists={lists} />;
-  }
-
-  return (
-    <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
-      <div className="space-y-4">
-        {["SUPER_ADMIN", "OWNER_MANAGER"].includes(session.role) ? (
-          <Panel title="Create User">
-            <SmartForm
-              saving={saving}
-              submitLabel="Create user"
-              fields={[
-                ["name", "Name", "text"],
-                ["email", "Email", "email"],
-                ["password", "Password", "text", "Demo@12345"],
-                ["role", "Role", "select", session.role === "SUPER_ADMIN" ? ["SUPER_ADMIN", "OWNER_MANAGER", "ACCOUNTANT", "CARETAKER", "RESIDENT"] : ["OWNER_MANAGER", "ACCOUNTANT", "CARETAKER", "RESIDENT"]],
-                ["residentId", "Resident ID", "text"],
-                ["status", "Status", "select", ["active", "inactive"]],
-              ]}
-              onSubmit={(payload) => runAction("User created.", () => apiPost("/api/users", payload))}
-            />
-          </Panel>
-        ) : null}
-        <Panel title="Expense Entry">
-          <SmartForm
-            saving={saving}
-            submitLabel="Save expense"
-            fields={[
-              ["category", "Category", "text"],
-              ["amount", "Amount", "number"],
-              ["paidAt", "Paid at", "date", today],
-              ["vendor", "Vendor", "text"],
-              ["notes", "Notes", "text"],
-              ["status", "Status", "select", ["active", "inactive"]],
-            ]}
-            onSubmit={(payload) => runAction("Expense saved.", () => apiPost("/api/expenses", payload))}
-          />
-        </Panel>
-        <Panel title="Document Upload">
-          <UploadForm saving={saving} onDone={(message) => runAction(message, async () => undefined)} />
-        </Panel>
-      </div>
-      <div className="space-y-4">
-        {["SUPER_ADMIN", "OWNER_MANAGER"].includes(session.role) ? (
-          <Panel title="Users">
-            <DataTable resource="users" rows={lists.users?.rows ?? []} columns={["name", "email", "role", "residentId", "status"]} runAction={runAction} />
-          </Panel>
-        ) : null}
-        <Panel title="Expenses"><DataTable resource="expenses" rows={lists.expenses?.rows ?? []} columns={["category", "amount", "paidAt", "vendor", "status"]} runAction={runAction} /></Panel>
-        <Panel title="Audit Logs"><DataTable resource="audit_logs" rows={lists.audit_logs?.rows ?? []} columns={["actorUserId", "action", "entity", "entityId", "createdAt"]} runAction={runAction} /></Panel>
-      </div>
-    </section>
-  );
-}
-
-function Sidebar({ active, role, setActive }: { active: ModuleKey; role?: string; setActive: (key: ModuleKey) => void }) {
-  const visibleModules = modules.filter((module) => !role || canAccessModule(role, module.key));
-  return (
-    <div className="flex h-full flex-col px-4 py-5">
-      <div className="mb-6 flex items-center gap-3 px-2">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-950 text-white">
-          <Building2 size={22} />
-        </div>
-        <div>
-          <p className="font-semibold text-slate-950">PG Manager</p>
-          <p className="text-xs text-slate-500">Production console</p>
-        </div>
-      </div>
-      <nav className="space-y-1">
-        {visibleModules.map((module) => {
-          const Icon = module.icon;
-          return (
-            <button
-              key={module.key}
-              className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium ${active === module.key ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"}`}
-              onClick={() => setActive(module.key)}
-            >
-              <Icon size={18} /> {module.label}
-            </button>
-          );
-        })}
+        )}
       </nav>
-      <div className="mt-auto rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
-          <ShieldCheck size={16} /> Deployment ready
-        </div>
-        <p className="mt-1 text-xs text-slate-500">Switch DATA_ADAPTER to google_sheets and add service-account credentials.</p>
-      </div>
-    </div>
-  );
-}
 
-function canAccessModule(role: string, module: ModuleKey) {
-  return (roleModules[role] ?? ["dashboard"]).includes(module);
-}
-
-function getModuleResources(module: ModuleKey, role?: string) {
-  const resources = moduleResources[module] ?? [];
-  if (module !== "settings") return resources;
-  if (role === "SUPER_ADMIN" || role === "OWNER_MANAGER") return resources;
-  return resources.filter((resource) => resource !== "users" && resource !== "audit_logs");
-}
-
-type FieldConfig = [name: string, label: string, type: "text" | "email" | "tel" | "number" | "date" | "month" | "datetime-local" | "select" | "textarea", options?: string | string[] | string[][]];
-
-function SmartForm({ fields, submitLabel, saving, onSubmit }: { fields: FieldConfig[]; submitLabel: string; saving: boolean; onSubmit: (payload: Row) => void }) {
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const payload: Row = {};
-    fields.forEach(([name, , type]) => {
-      const value = String(formData.get(name) ?? "");
-      if (value === "") return;
-      payload[name] = type === "number" ? Number(value) : value;
-    });
-    onSubmit(payload);
-    event.currentTarget.reset();
-  }
-
-  return (
-    <form className="space-y-3" onSubmit={submit}>
-      {fields.map(([name, label, type, options]) => (
-        <label key={name} className="block">
-          <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</span>
-          {type === "select" ? (
-            <select name={name} className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-950" defaultValue="">
-              <option value="" disabled>Select {label.toLowerCase()}</option>
-              {normalizeOptions(options).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
-            </select>
-          ) : type === "textarea" ? (
-            <textarea name={name} defaultValue={typeof options === "string" ? options : ""} className="mt-1 min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-950" />
-          ) : (
-            <input name={name} type={type} defaultValue={typeof options === "string" ? options : ""} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-950" />
-          )}
-        </label>
-      ))}
-      <button disabled={saving} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60">
-        {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} {submitLabel}
-      </button>
-    </form>
-  );
-}
-
-function UploadForm({ saving, onDone }: { saving: boolean; onDone: (message: string) => void }) {
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    await apiUpload("/api/files/upload", formData);
-    form.reset();
-    onDone("File uploaded to configured Drive folder.");
-  }
-
-  return (
-    <form className="space-y-3" onSubmit={submit}>
-      <label className="block">
-        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Folder</span>
-        <select name="folder" className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
-          {["agreements", "id_proofs", "resident_photos", "receipts", "complaint_images", "exports", "notices", "staff_docs"].map((folder) => <option key={folder} value={folder}>{folder}</option>)}
-        </select>
-      </label>
-      <input name="file" type="file" className="w-full rounded-md border border-dashed border-slate-300 p-3 text-sm" required />
-      <button disabled={saving} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800">
-        <Upload size={16} /> Upload document
-      </button>
-    </form>
-  );
-}
-
-function DataTable({
-  rows,
-  columns,
-  resource,
-  runAction,
-}: {
-  rows: Row[];
-  columns: string[];
-  resource?: string;
-  runAction?: <T>(label: string, task: () => Promise<T>) => Promise<void>;
-}) {
-  const [editing, setEditing] = useState<Row | null>(null);
-  const canManage = Boolean(resource && runAction);
-
-  async function deleteRow(row: Row) {
-    if (!resource || !runAction || !row.id) return;
-    const label = String(row.fullName ?? row.name ?? row.title ?? row.id);
-    const confirmed = window.confirm(`Soft delete ${label}? This hides the record from normal lists but keeps an audit trail.`);
-    if (!confirmed) return;
-    await runAction("Record soft-deleted.", () => apiDelete(`/api/${resource}/${row.id}`));
-  }
-
-  if (!rows.length) return <EmptyState title="No records found" body="Create a record or adjust your search." />;
-  return (
-    <>
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-              {columns.map((column) => <th key={column} className="whitespace-nowrap px-2 py-2 font-semibold">{pretty(column)}</th>)}
-              {canManage ? <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Manage</th> : null}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={String(row.id ?? JSON.stringify(row))} className="border-b border-slate-100 last:border-0">
-                {columns.map((column) => (
-                  <td key={column} className="max-w-72 truncate whitespace-nowrap px-2 py-3 text-slate-700">
-                    {column === "status" || column === "priority" ? <Status value={String(row[column] ?? "")} /> : formatCell(row[column])}
-                  </td>
+      {/* HERO */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 pt-20">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(16,185,129,0.15),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(59,130,246,0.1),transparent_50%)]" />
+        <div className="relative mx-auto flex max-w-7xl flex-col items-center gap-12 px-4 pb-20 pt-16 sm:px-6 lg:flex-row lg:pt-24">
+          <div className="flex-1 text-center lg:text-left">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm text-white/70 backdrop-blur">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              Premium PG Accommodation
+            </div>
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
+              Your <span className="text-emerald-400">Home Away</span>
+              <br />
+              From Home
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/60">
+              Sunrise PG offers premium, fully-furnished accommodations with modern amenities, delicious meals, and a vibrant community — perfect for students and working professionals.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-4 justify-center lg:justify-start">
+              <a href="#enquiry" className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700 hover:shadow-xl">
+                Book a Visit <ChevronRight size={16} />
+              </a>
+              <a href="#rooms" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+                View Rooms
+              </a>
+            </div>
+            <div className="mt-10 flex flex-wrap items-center gap-6 justify-center lg:justify-start">
+              <div className="flex -space-x-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-8 w-8 rounded-full border-2 border-slate-700 bg-slate-600" />
                 ))}
-                {canManage ? (
-                  <td className="whitespace-nowrap px-2 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50" onClick={() => setEditing(row)}>
-                        <Edit3 size={13} /> Edit
-                      </button>
-                      <button className="inline-flex items-center gap-1 rounded-md border border-rose-200 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50" onClick={() => deleteRow(row)}>
-                        <Trash2 size={13} /> Delete
-                      </button>
-                    </div>
-                  </td>
-                ) : null}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {editing && resource && runAction ? (
-        <EditRecordDialog
-          row={editing}
-          resource={resource}
-          onClose={() => setEditing(null)}
-          onSave={(payload) => runAction("Record updated.", () => apiPut(`/api/${resource}/${editing.id}`, payload)).then(() => setEditing(null))}
-        />
-      ) : null}
-    </>
-  );
-}
-
-function EditRecordDialog({ row, resource, onClose, onSave }: { row: Row; resource: string; onClose: () => void; onSave: (payload: Row) => Promise<void> }) {
-  const fields = Object.keys(row).filter((key) => !["id", "propertyId", "passwordHash", "createdAt", "updatedAt"].includes(key));
-
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const payload: Row = {};
-    fields.forEach((field) => {
-      const original = row[field];
-      const value = String(formData.get(field) ?? "");
-      payload[field] = typeof original === "number" ? Number(value || 0) : value;
-    });
-    onSave(payload);
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/50 px-4 py-6">
-      <form className="w-full max-w-2xl rounded-lg bg-white shadow-xl" onSubmit={submit}>
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-          <div>
-            <h3 className="font-semibold text-slate-950">Edit {pretty(resource)}</h3>
-            <p className="text-xs text-slate-500">Record ID: {String(row.id)}</p>
+              </div>
+              <p className="text-sm text-white/50">
+                <span className="font-semibold text-white">50+</span> happy residents
+              </p>
+            </div>
           </div>
-          <button type="button" className="rounded-md p-2 text-slate-500 hover:bg-slate-100" onClick={onClose} aria-label="Close editor">
-            <X size={18} />
-          </button>
-        </div>
-        <div className="grid gap-3 p-4 sm:grid-cols-2">
-          {fields.map((field) => {
-            const value = row[field];
-            const textValue = String(value ?? "");
-            const isLong = textValue.length > 80 || field.toLowerCase().includes("json") || field.toLowerCase().includes("description") || field.toLowerCase().includes("body") || field.toLowerCase().includes("notes");
-            return (
-              <label key={field} className={isLong ? "block sm:col-span-2" : "block"}>
-                <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{pretty(field)}</span>
-                {isLong ? (
-                  <textarea name={field} defaultValue={textValue} className="mt-1 min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-950" />
-                ) : (
-                  <input name={field} type={typeof value === "number" ? "number" : inferInputType(field)} defaultValue={textValue} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-950" />
-                )}
-              </label>
-            );
-          })}
-        </div>
-        <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 sm:flex-row sm:justify-end">
-          <button type="button" className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700" onClick={onClose}>Cancel</button>
-          <button className="inline-flex items-center justify-center gap-2 rounded-md bg-slate-950 px-3 py-2 text-sm font-medium text-white">
-            <Save size={16} /> Save changes
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-function WorkQueue({ lists }: { lists: Lists }) {
-  const due = (lists.invoices?.rows ?? []).filter((invoice) => Number(invoice.totalAmount) > Number(invoice.paidAmount)).length;
-  const openComplaints = (lists.complaints?.rows ?? []).filter((complaint) => ["open", "in_progress"].includes(String(complaint.status))).length;
-  const vacantBeds = (lists.beds?.rows ?? []).filter((bed) => bed.status === "vacant").length;
-  const lowStock = (lists.inventory_items?.rows ?? []).filter((item) => Number(item.currentStock) <= Number(item.reorderLevel)).length;
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <Task title="Collect rent" value={`${due} invoices pending`} tone={due ? "amber" : "green"} />
-      <Task title="Resolve maintenance" value={`${openComplaints} tickets open`} tone={openComplaints ? "red" : "green"} />
-      <Task title="Fill beds" value={`${vacantBeds} beds vacant`} tone={vacantBeds ? "blue" : "green"} />
-      <Task title="Restock inventory" value={`${lowStock} low-stock items`} tone={lowStock ? "amber" : "green"} />
-    </div>
-  );
-}
-
-function Task({ title, value, tone }: { title: string; value: string; tone: "green" | "amber" | "red" | "blue" }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-      <Badge tone={tone}>{title}</Badge>
-      <p className="mt-3 text-lg font-semibold text-slate-950">{value}</p>
-    </div>
-  );
-}
-
-function Activity({ items }: { items: { id: string; label: string; at: string }[] }) {
-  if (!items.length) return <EmptyState title="No recent activity" body="New payments, complaints, and visitors will appear here." />;
-  return (
-    <div className="space-y-3">
-      {items.map((item) => (
-        <div key={item.id} className="flex gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
-          <div className="mt-1 h-2 w-2 rounded-full bg-sky-500" />
-          <div>
-            <p className="text-sm font-medium text-slate-800">{item.label}</p>
-            <p className="text-xs text-slate-500">{new Date(item.at).toLocaleString()}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Reports({ lists }: { lists: Lists }) {
-  const reports = ["revenue", "occupancy", "defaulters", "complaints", "inventory"];
-  return (
-    <section className="space-y-4">
-      <Panel title="Export Center">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          {reports.map((report) => (
-            <div key={report} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <p className="font-semibold text-slate-950">{pretty(report)}</p>
-              <p className="mt-1 text-sm text-slate-500">Download as CSV or PDF.</p>
-              <div className="mt-4 flex gap-2">
-                <button className="rounded-md bg-slate-950 px-3 py-2 text-sm font-medium text-white" onClick={() => downloadReport(`/api/reports/${report}?format=csv`)}>CSV</button>
-                <button className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700" onClick={() => downloadReport(`/api/reports/${report}?format=pdf`)}>PDF</button>
+          <div className="flex-1">
+            <div className="relative">
+              <div className="absolute -inset-4 rounded-2xl bg-gradient-to-r from-emerald-500/20 to-blue-500/20 blur-xl" />
+              <img
+                src="https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=700&h=500&fit=crop"
+                alt="PG Building"
+                className="relative rounded-2xl object-cover shadow-2xl"
+              />
+              <div className="absolute -bottom-4 -left-4 rounded-xl border border-white/10 bg-white/10 p-4 backdrop-blur-lg">
+                <p className="text-2xl font-bold text-white">4.8</p>
+                <div className="flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map((i) => <Star key={i} size={12} className="fill-amber-400 text-amber-400" />)}
+                </div>
+                <p className="text-xs text-white/60">Avg. Rating</p>
               </div>
             </div>
-          ))}
+          </div>
         </div>
-      </Panel>
-      <Panel title="Financial Summary">
-        <DataTable rows={lists.invoices?.rows ?? []} columns={["id", "residentId", "month", "totalAmount", "paidAmount", "status"]} />
-      </Panel>
-    </section>
-  );
-}
+      </section>
 
-function ReportActions({ type }: { type: string }) {
-  return (
-    <div className="flex gap-2">
-      <button className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700" onClick={() => downloadReport(`/api/reports/${type}?format=csv`)}>
-        <Download size={14} /> CSV
-      </button>
-      <button className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700" onClick={() => downloadReport(`/api/reports/${type}?format=pdf`)}>
-        <Download size={14} /> PDF
-      </button>
+      {/* ROOMS */}
+      <section id="rooms" className="scroll-mt-16 bg-slate-50 px-4 py-20 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-12 text-center">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-emerald-600">Our Rooms</p>
+            <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">Choose Your Space</h2>
+            <p className="mx-auto mt-3 max-w-xl text-slate-500">From private singles to budget-friendly dorms, find the perfect room that suits your needs and budget.</p>
+          </div>
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            {rooms.map((room) => (
+              <div key={room.name} className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+                <div className="relative h-48 overflow-hidden">
+                  <img src={room.img} alt={room.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-110" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                  <p className="absolute bottom-3 left-3 text-lg font-bold text-white">{room.price}</p>
+                </div>
+                <div className="p-5">
+                  <h3 className="text-lg font-semibold text-slate-900">{room.name}</h3>
+                  <p className="mt-1 text-sm text-slate-500">{room.desc}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {room.features.map((f) => (
+                      <span key={f} className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{f}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SERVICES */}
+      <section id="services" className="scroll-mt-16 bg-white px-4 py-20 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-12 text-center">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-emerald-600">What We Offer</p>
+            <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">Premium Amenities</h2>
+            <p className="mx-auto mt-3 max-w-xl text-slate-500">Everything you need for a comfortable and convenient living experience.</p>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {services.map((s) => (
+              <div key={s.title} className="group rounded-xl border border-slate-200 p-6 transition hover:border-emerald-200 hover:bg-emerald-50/50">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition group-hover:bg-emerald-200">
+                  <s.icon size={24} />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900">{s.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-500">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* REVIEWS */}
+      <section id="reviews" className="scroll-mt-16 bg-slate-50 px-4 py-20 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-12 text-center">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-emerald-600">Testimonials</p>
+            <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">What Residents Say</h2>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {reviews.map((r) => (
+              <div key={r.name} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-3 flex gap-1">
+                  {Array.from({ length: r.rating }).map((_, i) => <Star key={i} size={14} className="fill-amber-400 text-amber-400" />)}
+                </div>
+                <p className="text-sm leading-relaxed text-slate-600">&ldquo;{r.text}&rdquo;</p>
+                <div className="mt-4 border-t border-slate-100 pt-4">
+                  <p className="text-sm font-semibold text-slate-900">{r.name}</p>
+                  <p className="text-xs text-slate-500">{r.role}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ENQUIRY + CONTACT */}
+      <section id="enquiry" className="scroll-mt-16 bg-white px-4 py-20 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-12 lg:grid-cols-2">
+            <div>
+              <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-emerald-600">Get In Touch</p>
+              <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">Send Us an Enquiry</h2>
+              <p className="mt-3 text-slate-500">Have questions? Fill out the form and we&apos;ll get back to you within 24 hours.</p>
+              <div className="mt-8 space-y-4">
+                <div className="flex items-center gap-3 text-sm text-slate-600">
+                  <MapPin size={16} className="text-emerald-600 shrink-0" />
+                  123 Sunrise Avenue, Near Tech Park, Bengaluru 560001
+                </div>
+                <div className="flex items-center gap-3 text-sm text-slate-600">
+                  <Phone size={16} className="text-emerald-600 shrink-0" />
+                  +91 98765 43210
+                </div>
+                <div className="flex items-center gap-3 text-sm text-slate-600">
+                  <Mail size={16} className="text-emerald-600 shrink-0" />
+                  hello@sunrisepg.in
+                </div>
+              </div>
+            </div>
+            <div>
+              <form className="space-y-4" onSubmit={handleSubmit}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase text-slate-500" htmlFor="name">Name</label>
+                    <input id="name" className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" placeholder="Your name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase text-slate-500" htmlFor="phone">Phone</label>
+                    <input id="phone" className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" placeholder="Your phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500" htmlFor="email">Email</label>
+                  <input id="email" type="email" className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" placeholder="your@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase text-slate-500" htmlFor="message">Message</label>
+                  <textarea id="message" rows={4} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 resize-none" placeholder="Tell us about your requirements..." value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} required />
+                </div>
+                <button className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700">
+                  {submitted ? "Sent! We'll contact you soon." : "Submit Enquiry"}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer id="contact" className="scroll-mt-16 border-t border-slate-200 bg-slate-900 px-4 py-12 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-8 sm:grid-cols-3">
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
+                  <BedDouble size={16} className="text-emerald-400" />
+                </div>
+                <span className="font-semibold text-white">Sunrise PG</span>
+              </div>
+              <p className="text-sm text-white/50">Premium PG accommodation for students and working professionals. Your home away from home.</p>
+            </div>
+            <div>
+              <p className="mb-3 text-sm font-semibold text-white">Quick Links</p>
+              <div className="flex flex-col gap-2 text-sm text-white/50">
+                <a href="#rooms" className="hover:text-white">Rooms</a>
+                <a href="#services" className="hover:text-white">Services</a>
+                <a href="#reviews" className="hover:text-white">Reviews</a>
+                <a href="/dashboard" className="hover:text-white">Admin Login</a>
+              </div>
+            </div>
+            <div>
+              <p className="mb-3 text-sm font-semibold text-white">Contact</p>
+              <div className="flex flex-col gap-2 text-sm text-white/50">
+                <p>123 Sunrise Avenue, Bengaluru</p>
+                <p>+91 98765 43210</p>
+                <p>hello@sunrisepg.in</p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-8 border-t border-white/10 pt-8 text-center text-xs text-white/30">
+            &copy; {new Date().getFullYear()} Sunrise PG. All rights reserved.
+          </div>
+        </div>
+      </footer>
     </div>
   );
-}
-
-function Status({ value }: { value: string }) {
-  const tone = value.includes("paid") || value === "occupied" || value === "active" || value === "received" ? "green" : value.includes("due") || value === "low" || value === "open" || value === "high" ? "amber" : value.includes("critical") || value.includes("maintenance") ? "red" : value.includes("progress") ? "blue" : "slate";
-  return <Badge tone={tone}>{value.replaceAll("_", " ")}</Badge>;
-}
-
-function LoadingGrid() {
-  return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, index) => <div key={index} className="h-32 animate-pulse rounded-lg bg-slate-200" />)}
-    </section>
-  );
-}
-
-function normalizeOptions(options: FieldConfig[3]): [string, string][] {
-  if (!options) return [];
-  if (typeof options === "string") return [[options, options]];
-  return options.map((option) => Array.isArray(option) ? [option[0] ?? "", option[1] ?? option[0] ?? ""] : [option, option]);
-}
-
-function formatCell(value: Row[string]) {
-  if (value === undefined || value === "") return "—";
-  if (typeof value === "number" && value > 999) return money(value);
-  return String(value);
-}
-
-function pretty(value: string) {
-  return value.replaceAll("_", " ").replace(/([A-Z])/g, " $1").replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function inferInputType(field: string) {
-  const normalized = field.toLowerCase();
-  if (normalized.includes("email")) return "email";
-  if (normalized.includes("phone")) return "tel";
-  if (normalized.endsWith("date") || normalized === "paidat") return "date";
-  if (normalized.endsWith("at")) return "datetime-local";
-  return "text";
-}
-
-function money(value: number) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
-}
-
-function downloadReport(url: string) {
-  window.location.assign(url);
-}
-
-async function apiGet<T>(url: string): Promise<T> {
-  const response = await fetch(url);
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? "Request failed");
-  return payload.data as T;
-}
-
-async function apiPost<T>(url: string, body: Row): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? "Request failed");
-  return payload.data as T;
-}
-
-async function apiPut<T>(url: string, body: Row): Promise<T> {
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? "Request failed");
-  return payload.data as T;
-}
-
-async function apiDelete<T>(url: string): Promise<T> {
-  const response = await fetch(url, { method: "DELETE" });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? "Request failed");
-  return payload.data as T;
-}
-
-async function apiUpload<T>(url: string, body: FormData): Promise<T> {
-  const response = await fetch(url, { method: "POST", body });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? "Upload failed");
-  return payload.data as T;
 }

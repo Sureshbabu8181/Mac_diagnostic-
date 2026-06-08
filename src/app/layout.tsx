@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PG / Hostel Manager",
-  description: "Google Sheets powered PG and hostel management application",
+  title: "Sunrise PG | Premium PG Accommodation in Bengaluru",
+  description: "Sunrise PG offers premium, fully-furnished PG accommodations with modern amenities, delicious meals, and a vibrant community in Bengaluru.",
 };
 
 export default function RootLayout({
