@@ -261,9 +261,9 @@ export default function HomePage() {
             {!loading && session ? (
               <>
                 {moduleLoading ? (
-                  <div className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
-                    <Loader2 className="animate-spin" size={16} />
-                    Loading module data
+                  <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
+                    <Loader2 className="mx-auto animate-spin text-slate-400" size={24} />
+                    <p className="mt-2 text-sm text-slate-500">Loading module data...</p>
                   </div>
                 ) : null}
                 <AppContent active={active} dashboard={dashboard} lists={filtered} rawLists={lists} saving={saving} session={session} runAction={runAction} />

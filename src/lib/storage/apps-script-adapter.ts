@@ -2,24 +2,31 @@ import type { EntityMap, EntityName } from "../models";
 import type { ListOptions, ListResult, StorageAdapter } from "./storage-adapter";
 import { callAppsScript } from "./apps-script-client";
 
+function entityCacheKey(entity: string) {
+  return `list:${JSON.stringify({ entity })}`;
+}
+
 export class AppsScriptAdapter implements StorageAdapter {
-  list<K extends EntityName>(entity: K, options: ListOptions = {}) {
+  async list<K extends EntityName>(entity: K, options: ListOptions = {}) {
     return callAppsScript<ListResult<EntityMap[K]>>("list", { entity, options });
   }
 
-  get<K extends EntityName>(entity: K, id: string) {
+  async get<K extends EntityName>(entity: K, id: string) {
     return callAppsScript<EntityMap[K] | null>("get", { entity, id });
   }
 
-  create<K extends EntityName>(entity: K, input: Partial<EntityMap[K]>) {
-    return callAppsScript<EntityMap[K]>("create", { entity, input });
+  async create<K extends EntityName>(entity: K, input: Partial<EntityMap[K]>) {
+    const result = await callAppsScript<EntityMap[K]>("create", { entity, input });
+    return result;
   }
 
-  update<K extends EntityName>(entity: K, id: string, input: Partial<EntityMap[K]>) {
-    return callAppsScript<EntityMap[K]>("update", { entity, id, input });
+  async update<K extends EntityName>(entity: K, id: string, input: Partial<EntityMap[K]>) {
+    const result = await callAppsScript<EntityMap[K]>("update", { entity, id, input });
+    return result;
   }
 
-  softDelete<K extends EntityName>(entity: K, id: string) {
-    return callAppsScript<EntityMap[K]>("softDelete", { entity, id });
+  async softDelete<K extends EntityName>(entity: K, id: string) {
+    const result = await callAppsScript<EntityMap[K]>("softDelete", { entity, id });
+    return result;
   }
 }
