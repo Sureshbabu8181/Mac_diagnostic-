@@ -3,6 +3,28 @@ import type { EntityMap, EntityName } from "../models";
 import { sheetColumns } from "../models";
 import { makeId, matchesQuery, type ListOptions, type ListResult, type StorageAdapter } from "./storage-adapter";
 
+const cache = new Map<string, { data: Record<string, unknown>[]; at: number }>();
+const CACHE_TTL = 15_000;
+
+function getCached<T extends Record<string, unknown>>(key: string): T[] | null {
+  const entry = cache.get(key);
+  if (entry && Date.now() - entry.at < CACHE_TTL) return entry.data as T[];
+  cache.delete(key);
+  return null;
+}
+
+function setCache(key: string, data: Record<string, unknown>[]) {
+  cache.set(key, { data, at: Date.now() });
+}
+
+function clearCache(entity?: string) {
+  if (entity) {
+    cache.delete(entity);
+  } else {
+    cache.clear();
+  }
+}
+
 function getAuth() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
@@ -24,17 +46,21 @@ export class GoogleSheetsAdapter implements StorageAdapter {
   }
 
   private async allRows<K extends EntityName>(entity: K): Promise<EntityMap[K][]> {
+    const cached = getCached<EntityMap[K]>(entity);
+    if (cached) return cached;
     const range = `${entity}!A:ZZ`;
     const response = await this.sheets.spreadsheets.values.get({ spreadsheetId: this.assertSheetId(), range });
     const values = response.data.values ?? [];
     const headers = values[0] ?? sheetColumns[entity];
-    return values.slice(1).filter((row) => row.some(Boolean)).map((row) => {
+    const rows = values.slice(1).filter((row) => row.some(Boolean)).map((row) => {
       const record: Record<string, unknown> = {};
       headers.forEach((header, index) => {
         record[header] = row[index] ?? "";
       });
       return coerceRecord(entity, record) as EntityMap[K];
     });
+    setCache(entity, rows as Record<string, unknown>[]);
+    return rows;
   }
 
   private async replaceRows<K extends EntityName>(entity: K, rows: EntityMap[K][]) {
@@ -49,6 +75,7 @@ export class GoogleSheetsAdapter implements StorageAdapter {
       valueInputOption: "RAW",
       requestBody: { values },
     });
+    clearCache(entity);
   }
 
   async list<K extends EntityName>(entity: K, options: ListOptions = {}): Promise<ListResult<EntityMap[K]>> {
@@ -87,6 +114,7 @@ export class GoogleSheetsAdapter implements StorageAdapter {
       insertDataOption: "INSERT_ROWS",
       requestBody: { values: [columns.map((column) => String((row as Record<string, unknown>)[column] ?? ""))] },
     });
+    clearCache(entity);
     return row;
   }
 

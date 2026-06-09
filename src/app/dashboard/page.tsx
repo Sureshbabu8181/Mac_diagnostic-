@@ -113,20 +113,17 @@ export default function HomePage() {
     setLoading(true);
     setToast(null);
     try {
-      const me = await apiGet<SessionUser | null>("/api/auth/me");
-      if (!me) {
+      const user = await apiGet<SessionUser | null>("/api/auth/me");
+      if (!user) {
         setSession(null);
         setDashboard(null);
         setLists({});
         window.location.href = "/login";
         return;
       }
-      const activeModule = options.activeModule ?? active;
-      const [user, dash] = await Promise.all([
-        apiGet<SessionUser>("/api/auth/me"),
-        apiGet<Dashboard>("/api/dashboard"),
-      ]);
       setSession(user);
+      const activeModule = options.activeModule ?? active;
+      const dash = await apiGet<Dashboard>("/api/dashboard");
       setDashboard(dash);
       await loadResources(activeModule, { force: options.forceResources });
     } catch (error) {

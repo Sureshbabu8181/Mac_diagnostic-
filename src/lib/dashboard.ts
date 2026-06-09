@@ -3,15 +3,15 @@ import { getStorage } from "./storage";
 export async function getDashboard(propertyId: string) {
   const storage = getStorage();
   const [beds, invoices, complaints, allocations, payments, visitors, inventory, expenses, residents] = await Promise.all([
-    storage.list("beds", { filters: { propertyId }, pageSize: 1000 }),
-    storage.list("invoices", { filters: { propertyId }, pageSize: 1000 }),
-    storage.list("complaints", { filters: { propertyId }, pageSize: 1000 }),
-    storage.list("allocations", { filters: { propertyId }, pageSize: 1000 }),
-    storage.list("payments", { filters: { propertyId }, pageSize: 1000 }),
-    storage.list("visitors", { filters: { propertyId }, pageSize: 1000 }),
-    storage.list("inventory_items", { filters: { propertyId }, pageSize: 1000 }),
-    storage.list("expenses", { filters: { propertyId }, pageSize: 1000 }),
-    storage.list("residents", { filters: { propertyId }, pageSize: 1000 }),
+    storage.list("beds", { filters: { propertyId }, pageSize: 5000 }),
+    storage.list("invoices", { filters: { propertyId }, pageSize: 5000 }),
+    storage.list("complaints", { filters: { propertyId }, pageSize: 5000 }),
+    storage.list("allocations", { filters: { propertyId }, pageSize: 5000 }),
+    storage.list("payments", { filters: { propertyId }, pageSize: 5000 }),
+    storage.list("visitors", { filters: { propertyId }, pageSize: 5000 }),
+    storage.list("inventory_items", { filters: { propertyId }, pageSize: 5000 }),
+    storage.list("expenses", { filters: { propertyId }, pageSize: 5000 }),
+    storage.list("residents", { filters: { propertyId }, pageSize: 5000 }),
   ]);
 
   const occupiedBeds = beds.rows.filter((bed) => bed.status === "occupied").length;
