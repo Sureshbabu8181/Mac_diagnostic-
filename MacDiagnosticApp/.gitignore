@@ -1,0 +1,6 @@
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj  # generated at packaging time
+!Package.swift
+.DS_Store

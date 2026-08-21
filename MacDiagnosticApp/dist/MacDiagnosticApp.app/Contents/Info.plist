@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleExecutable</key><string>MacDiagnosticApp</string>
+    <key>CFBundleIconFile</key><string>MacDiagnosticApp</string>
+    <key>CFBundleIdentifier</key><string>com.macdiagnostic.app</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundleName</key><string>MAC Diagnostic Center</string>
+    <key>CFBundleDisplayName</key><string>MAC Diagnostic Center</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>1.0.1</string>
+    <key>CFBundleVersion</key><string>1.0.1</string>
+    <key>LSMinimumSystemVersion</key><string>15.0</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>NSHumanReadableCopyright</key><string>Copyright © 2026. Internal IT tool.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>MAC Diagnostic Center uses the microphone only during the microphone test to verify input. The recording is temporary and deleted after the test.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>MAC Diagnostic Center uses the camera only during the camera test to verify the device delivers live frames. No video is saved.</string>
+</dict>
+</plist>

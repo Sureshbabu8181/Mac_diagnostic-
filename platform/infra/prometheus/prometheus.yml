@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: sunrise-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8080"]
+  - job_name: sunrise-gateway
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["gateway:8090"]
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

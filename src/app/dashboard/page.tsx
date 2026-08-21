@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   BadgeIndianRupee,
   BedDouble,
@@ -76,7 +76,7 @@ const moduleResources: Record<ModuleKey, string[]> = {
   meals: ["mess_plans", "notices"],
   inventory: ["inventory_items", "inventory_transactions"],
   reports: ["invoices", "payments", "complaints", "inventory_items", "expenses", "residents", "beds"],
-  settings: ["users", "expenses", "audit_logs", "enquiries"],
+  settings: ["users", "expenses", "audit_logs", "enquiries", "allocations", "residents"],
 };
 
 const today = new Date().toISOString().slice(0, 10);
@@ -345,6 +345,8 @@ function AppContent({
               ["expectedCheckOutDate", "Expected check-out", "date"],
               ["depositAmount", "Deposit", "number", "20000"],
               ["monthlyRent", "Monthly rent", "number", "9500"],
+              ["idProofFileId", "ID Proof", "file", "id_proofs"],
+              ["agreementFileId", "Agreement", "file", "agreements"],
             ]}
             onSubmit={(payload) => runAction("Resident checked in and bed allocated.", () => apiPost("/api/workflows/check-in", payload))}
           />
@@ -424,6 +426,7 @@ function AppContent({
                 ["mode", "Mode", "select", ["cash", "upi", "bank_transfer", "card", "other"]],
                 ["reference", "Reference", "text"],
                 ["notes", "Notes", "text"],
+                ["receiptFileId", "Receipt", "file", "receipts"],
               ]}
               onSubmit={(payload) => runAction("Payment recorded and invoice updated.", () => apiPost("/api/workflows/record-payment", payload))}
             />
@@ -456,6 +459,7 @@ function AppContent({
                 ["priority", "Priority", "select", ["low", "medium", "high", "critical"]],
                 ["status", "Status", "select", ["open", "in_progress"]],
                 ["openedAt", "Opened at", "datetime-local", new Date().toISOString().slice(0, 16)],
+                ["imageFileIds", "Images", "file", "complaint_images"],
               ]}
               onSubmit={(payload) => runAction("Complaint created.", () => apiPost("/api/complaints", payload))}
             />
@@ -630,6 +634,7 @@ function AppContent({
               ["paidAt", "Paid at", "date", today],
               ["vendor", "Vendor", "text"],
               ["notes", "Notes", "text"],
+              ["receiptFileId", "Receipt", "file", "receipts"],
               ["status", "Status", "select", ["active", "inactive"]],
             ]}
             onSubmit={(payload) => runAction("Expense saved.", () => apiPost("/api/expenses", payload))}
@@ -638,6 +643,11 @@ function AppContent({
         <Panel title="Document Upload">
           <UploadForm saving={saving} onDone={(message) => runAction(message, async () => undefined)} />
         </Panel>
+        {["SUPER_ADMIN", "OWNER_MANAGER"].includes(session.role) ? (
+          <Panel title="Import / Export">
+            <ImportExport saving={saving} runAction={runAction} />
+          </Panel>
+        ) : null}
       </div>
       <div className="space-y-4">
         {["SUPER_ADMIN", "OWNER_MANAGER"].includes(session.role) ? (
@@ -648,6 +658,9 @@ function AppContent({
         <Panel title="Expenses"><DataTable resource="expenses" rows={lists.expenses?.rows ?? []} columns={["category", "amount", "paidAt", "vendor", "status"]} runAction={runAction} /></Panel>
         <Panel title="Audit Logs"><DataTable resource="audit_logs" rows={lists.audit_logs?.rows ?? []} columns={["actorUserId", "action", "entity", "entityId", "createdAt"]} runAction={runAction} /></Panel>
         <Panel title="Enquiries"><DataTable resource="enquiries" rows={lists.enquiries?.rows ?? []} columns={["name", "phone", "email", "message", "createdAt"]} runAction={runAction} /></Panel>
+        <Panel title="Auto Vacate">
+          <AutoVacatePanel saving={saving} runAction={runAction} rawLists={rawLists} session={session} />
+        </Panel>
       </div>
     </section>
   );
@@ -701,18 +714,29 @@ function getModuleResources(module: ModuleKey, role?: string) {
   return resources.filter((resource) => resource !== "users" && resource !== "audit_logs");
 }
 
-type FieldConfig = [name: string, label: string, type: "text" | "email" | "tel" | "number" | "date" | "month" | "datetime-local" | "select" | "textarea", options?: string | string[] | string[][]];
+type FieldConfig = [name: string, label: string, type: "text" | "email" | "tel" | "number" | "date" | "month" | "datetime-local" | "select" | "textarea" | "file", options?: string | string[] | string[][]];
 
 function SmartForm({ fields, submitLabel, saving, onSubmit }: { fields: FieldConfig[]; submitLabel: string; saving: boolean; onSubmit: (payload: Row) => void }) {
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const payload: Row = {};
-    fields.forEach(([name, , type]) => {
-      const value = String(formData.get(name) ?? "");
-      if (value === "") return;
-      payload[name] = type === "number" ? Number(value) : value;
-    });
+    for (const [name, , type, folder] of fields) {
+      if (type === "file") {
+        const file = formData.get(name) as File;
+        if (file && file.size > 0) {
+          const uploadForm = new FormData();
+          uploadForm.set("folder", (folder as string) ?? "exports");
+          uploadForm.set("file", file);
+          const result = await apiUpload<{ id: string }>("/api/files/upload", uploadForm);
+          payload[name] = result.id;
+        }
+      } else {
+        const value = String(formData.get(name) ?? "");
+        if (value === "") continue;
+        payload[name] = type === "number" ? Number(value) : value;
+      }
+    }
     onSubmit(payload);
     event.currentTarget.reset();
   }
@@ -729,6 +753,8 @@ function SmartForm({ fields, submitLabel, saving, onSubmit }: { fields: FieldCon
             </select>
           ) : type === "textarea" ? (
             <textarea name={name} defaultValue={typeof options === "string" ? options : ""} className="mt-1 min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-950" />
+          ) : type === "file" ? (
+            <input name={name} type="file" className="mt-1 w-full rounded-md border border-dashed border-slate-300 p-2 text-sm file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200" />
           ) : (
             <input name={name} type={type} defaultValue={typeof options === "string" ? options : ""} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-950" />
           )}
@@ -764,6 +790,120 @@ function UploadForm({ saving, onDone }: { saving: boolean; onDone: (message: str
         <Upload size={16} /> Upload document
       </button>
     </form>
+  );
+}
+
+function ImportExport({ saving, runAction }: { saving: boolean; runAction: <T>(label: string, task: () => Promise<T>) => Promise<void> }) {
+  const entities = [
+    "residents", "allocations", "rooms", "beds", "invoices", "payments",
+    "complaints", "visitors", "expenses", "inventory_items", "staff", "notices",
+  ];
+  const [entity, setEntity] = useState("residents");
+  const [format, setFormat] = useState<"csv" | "json">("csv");
+  const importRef = useRef<HTMLInputElement>(null);
+
+  function handleExport() {
+    window.location.assign(`/api/data/export?entity=${entity}&format=${format}`);
+  }
+
+  async function handleImport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    formData.set("entity", entity);
+    formData.set("format", format);
+    await runAction("Data imported.", () => apiUpload<{ created: number; errors: unknown[] }>("/api/data/import", formData));
+    form.reset();
+  }
+
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Entity</span>
+        <select className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" value={entity} onChange={(e) => setEntity(e.target.value)}>
+          {entities.map((e) => <option key={e} value={e}>{pretty(e)}</option>)}
+        </select>
+      </label>
+      <label className="block">
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Format</span>
+        <select className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" value={format} onChange={(e) => setFormat(e.target.value as "csv" | "json")}>
+          <option value="csv">CSV (Excel / Sheets)</option>
+          <option value="json">JSON</option>
+        </select>
+      </label>
+      <div className="flex gap-2">
+        <button onClick={handleExport} className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50">
+          <Download size={16} /> Export
+        </button>
+      </div>
+      <hr className="border-slate-200" />
+      <form onSubmit={handleImport} className="space-y-2">
+        <input ref={importRef} name="file" type="file" accept=".csv,.json" className="w-full rounded-md border border-dashed border-slate-300 p-3 text-sm" required />
+        <button disabled={saving} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-60">
+          <Upload size={16} /> Import
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function AutoVacatePanel({ saving, runAction, rawLists, session }: { saving: boolean; runAction: <T>(label: string, task: () => Promise<T>) => Promise<void>; rawLists: Lists; session: SessionUser }) {
+  const allocations = (rawLists.allocations?.rows ?? []).filter((a) => a.status === "active");
+  const dueAllocations = allocations.filter(
+    (a) => a.scheduledVacateDate && String(a.scheduledVacateDate) <= new Date().toISOString().slice(0, 10)
+  );
+  const upcomingAllocations = allocations.filter(
+    (a) => a.scheduledVacateDate && String(a.scheduledVacateDate) > new Date().toISOString().slice(0, 10)
+  );
+
+  const residentMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of rawLists.residents?.rows ?? []) {
+      map.set(String(r.id), String(r.fullName));
+    }
+    return map;
+  }, [rawLists.residents?.rows]);
+
+  async function runAutoVacate() {
+    await runAction("Auto vacate completed.", () => apiPost<{ count: number }>("/api/workflows/auto-vacate", {}));
+  }
+
+  return (
+    <div className="space-y-3">
+      <button disabled={saving || !dueAllocations.length} onClick={runAutoVacate} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-amber-600 px-3 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60">
+        <Trash2 size={16} /> Run Auto Vacate {dueAllocations.length ? `(${dueAllocations.length} ready)` : ""}
+      </button>
+      {dueAllocations.length > 0 ? (
+        <div>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-amber-700">Due now</p>
+          <div className="max-h-40 space-y-1 overflow-y-auto">
+            {dueAllocations.map((a) => (
+              <div key={String(a.id)} className="flex items-center justify-between rounded bg-amber-50 px-2 py-1 text-xs">
+                <span className="font-medium text-amber-900">{residentMap.get(String(a.residentId)) ?? a.residentId}</span>
+                <span className="text-amber-600">{String(a.scheduledVacateDate)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {upcomingAllocations.length > 0 ? (
+        <div>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Upcoming ({upcomingAllocations.length})</p>
+          <div className="max-h-40 space-y-1 overflow-y-auto">
+            {upcomingAllocations.map((a) => (
+              <div key={String(a.id)} className="flex items-center justify-between rounded bg-slate-50 px-2 py-1 text-xs">
+                <span className="font-medium text-slate-700">{residentMap.get(String(a.residentId)) ?? a.residentId}</span>
+                <span className="text-slate-500">{String(a.scheduledVacateDate)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {!allocations.length ? <p className="text-xs text-slate-400">No active allocations</p> : null}
+      {allocations.length > 0 && !dueAllocations.length && !upcomingAllocations.length ? (
+        <p className="text-xs text-slate-400">No scheduled vacates. Set a vacate date on an allocation to use this feature.</p>
+      ) : null}
+    </div>
   );
 }
 

@@ -91,6 +91,7 @@ export type Allocation = {
   checkInDate: string;
   expectedCheckOutDate?: string;
   actualCheckOutDate?: string;
+  scheduledVacateDate?: string;
   depositAmount: number;
   monthlyRent: number;
   status: "active" | "completed" | "cancelled";
@@ -351,7 +352,7 @@ export const sheetColumns: Record<EntityName, string[]> = {
   rooms: ["id", "propertyId", "building", "floor", "roomNumber", "roomType", "capacity", "monthlyRent", "status", "createdAt", "updatedAt"],
   beds: ["id", "propertyId", "roomId", "bedNumber", "status", "currentResidentId", "createdAt", "updatedAt"],
   residents: ["id", "propertyId", "fullName", "phone", "email", "gender", "dateOfBirth", "occupation", "kycType", "kycNumber", "emergencyName", "emergencyPhone", "residentPhotoFileId", "idProofFileId", "agreementFileId", "status", "createdAt", "updatedAt"],
-  allocations: ["id", "propertyId", "residentId", "roomId", "bedId", "checkInDate", "expectedCheckOutDate", "actualCheckOutDate", "depositAmount", "monthlyRent", "status", "createdAt", "updatedAt"],
+  allocations: ["id", "propertyId", "residentId", "roomId", "bedId", "checkInDate", "expectedCheckOutDate", "actualCheckOutDate", "scheduledVacateDate", "depositAmount", "monthlyRent", "status", "createdAt", "updatedAt"],
   invoices: ["id", "propertyId", "residentId", "month", "rentAmount", "messAmount", "lateFee", "taxAmount", "totalAmount", "paidAmount", "dueDate", "status", "receiptFileId", "createdAt", "updatedAt"],
   payments: ["id", "propertyId", "invoiceId", "residentId", "amount", "mode", "paidAt", "reference", "notes", "receiptFileId", "status", "createdAt", "updatedAt"],
   complaints: ["id", "propertyId", "residentId", "title", "description", "priority", "status", "assignedStaffId", "imageFileIds", "openedAt", "resolvedAt", "createdAt", "updatedAt"],

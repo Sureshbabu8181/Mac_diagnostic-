@@ -1,0 +1,25 @@
+# Sunrise MDM reverse proxy (dev)
+{
+  admin off
+  email admin@sunrise-mdm.test
+}
+
+# Web console + agent downloads
+https://localhost {
+  handle /downloads/* {
+    root * /srv/downloads
+    file_server
+  }
+  handle {
+    reverse_proxy web:3000
+  }
+}
+
+# API / gateway
+https://api.localhost {
+  reverse_proxy api:8080
+}
+
+https://ws.localhost {
+  reverse_proxy gateway:8090
+}

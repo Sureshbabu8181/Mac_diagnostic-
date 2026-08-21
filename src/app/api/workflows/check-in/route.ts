@@ -19,6 +19,10 @@ const schema = z.object({
   expectedCheckOutDate: z.string().optional(),
   depositAmount: z.coerce.number().min(0),
   monthlyRent: z.coerce.number().positive(),
+  scheduledVacateDate: z.string().optional(),
+  idProofFileId: z.string().optional(),
+  agreementFileId: z.string().optional(),
+  residentPhotoFileId: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -43,6 +47,9 @@ export async function POST(request: Request) {
       kycNumber: input.kycNumber,
       emergencyName: input.emergencyName,
       emergencyPhone: input.emergencyPhone,
+      idProofFileId: input.idProofFileId,
+      agreementFileId: input.agreementFileId,
+      residentPhotoFileId: input.residentPhotoFileId,
       status: "active",
     });
     const allocation = await storage.create("allocations", {
@@ -52,6 +59,7 @@ export async function POST(request: Request) {
       bedId: input.bedId,
       checkInDate: input.checkInDate,
       expectedCheckOutDate: input.expectedCheckOutDate,
+      scheduledVacateDate: input.scheduledVacateDate,
       depositAmount: input.depositAmount,
       monthlyRent: input.monthlyRent,
       status: "active",
