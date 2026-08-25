@@ -17,14 +17,38 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.DeviceDiagnostic"
+      "package": "com.anonymous.DeviceDiagnostic",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-sqlite",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow MAC Diagnostic to access your camera for testing."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationPermission": "Allow MAC Diagnostic to access your location for GPS testing."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow MAC Diagnostic to use Face ID for biometric testing."
+        }
+      ]
     ]
   }
 }
