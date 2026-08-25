@@ -167,7 +167,7 @@ export default function DashboardScreen() {
           <TouchableOpacity
             key={cat.id}
             style={styles.categoryCard}
-            onPress={() => navigation.navigate('DiagnosticsList', { category: cat.id, title: cat.name })}
+            onPress={() => navigation.navigate('DiagnosticsTab', { screen: 'DiagnosticsList', params: { category: cat.id, title: cat.name } })}
           >
             <Ionicons name={cat.icon as any} size={28} color="#4CAF50" />
             <Text style={styles.categoryName}>{cat.name}</Text>
