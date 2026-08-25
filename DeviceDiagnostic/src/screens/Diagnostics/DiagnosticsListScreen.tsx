@@ -20,6 +20,8 @@ const engine = new DiagnosticEngine();
 const MANUAL_TESTS: Record<string, string> = {
   display: 'DisplayTest',
   touch: 'TouchTest',
+  physical_buttons: 'PhysicalButtonTest',
+  fingerprint: 'BiometricTest',
 };
 
 const STATUS_COLORS: Record<string, string> = {

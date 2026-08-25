@@ -4,13 +4,14 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { PaperProvider, MD3DarkTheme } from 'react-native-paper';
 
 import DashboardScreen from './src/screens/Dashboard/DashboardScreen';
 import DiagnosticsListScreen from './src/screens/Diagnostics/DiagnosticsListScreen';
 import TestDetailScreen from './src/screens/Diagnostics/TestDetailScreen';
 import DisplayTestScreen from './src/screens/Diagnostics/DisplayTestScreen';
 import TouchTestScreen from './src/screens/Diagnostics/TouchTestScreen';
+import PhysicalButtonTestScreen from './src/screens/Diagnostics/PhysicalButtonTestScreen';
+import BiometricTestScreen from './src/screens/Diagnostics/BiometricTestScreen';
 import HistoryScreen from './src/screens/History/HistoryScreen';
 import SessionDetailScreen from './src/screens/History/SessionDetailScreen';
 import ReportsScreen from './src/screens/Reports/ReportsScreen';
@@ -18,16 +19,6 @@ import SettingsScreen from './src/screens/Settings/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
-
-const theme = {
-  ...MD3DarkTheme,
-  colors: {
-    ...MD3DarkTheme.colors,
-    primary: '#4CAF50',
-    surface: '#1E1E2E',
-    background: '#121212',
-  },
-};
 
 const screenOptions = {
   headerStyle: { backgroundColor: '#1E1E2E' },
@@ -42,6 +33,8 @@ function DiagnosticsStack() {
       <Stack.Screen name="TestDetail" component={TestDetailScreen} options={{ title: 'Test Detail' }} />
       <Stack.Screen name="DisplayTest" component={DisplayTestScreen} options={{ title: 'Display Test', headerShown: false }} />
       <Stack.Screen name="TouchTest" component={TouchTestScreen} options={{ title: 'Touch Test', headerShown: false }} />
+      <Stack.Screen name="PhysicalButtonTest" component={PhysicalButtonTestScreen} options={{ title: 'Physical Buttons', headerShown: false }} />
+      <Stack.Screen name="BiometricTest" component={BiometricTestScreen} options={{ title: 'Biometric Test', headerShown: false }} />
     </Stack.Navigator>
   );
 }
@@ -63,6 +56,8 @@ function DashboardStack() {
       <Stack.Screen name="TestDetail" component={TestDetailScreen} options={{ title: 'Test Detail' }} />
       <Stack.Screen name="DisplayTest" component={DisplayTestScreen} options={{ title: 'Display Test', headerShown: false }} />
       <Stack.Screen name="TouchTest" component={TouchTestScreen} options={{ title: 'Touch Test', headerShown: false }} />
+      <Stack.Screen name="PhysicalButtonTest" component={PhysicalButtonTestScreen} options={{ title: 'Physical Buttons', headerShown: false }} />
+      <Stack.Screen name="BiometricTest" component={BiometricTestScreen} options={{ title: 'Biometric Test', headerShown: false }} />
       <Stack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ title: 'Session Detail' }} />
     </Stack.Navigator>
   );
@@ -70,7 +65,6 @@ function DashboardStack() {
 
 export default function App() {
   return (
-    <PaperProvider theme={theme}>
       <NavigationContainer>
         <StatusBar style="light" />
         <Tab.Navigator
@@ -99,6 +93,5 @@ export default function App() {
           <Tab.Screen name="Settings" component={SettingsScreen} />
         </Tab.Navigator>
       </NavigationContainer>
-    </PaperProvider>
   );
 }
