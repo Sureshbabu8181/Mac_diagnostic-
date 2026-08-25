@@ -1,5 +1,5 @@
 import { DiagnosticTest, DiagnosticResult } from '../../types';
-import { Paths } from 'expo-file-system';
+import { getFreeDiskStorageAsync, getTotalDiskCapacityAsync } from 'expo-file-system/legacy';
 
 export class StorageDiagnostic implements DiagnosticTest {
   id = 'storage';
@@ -10,7 +10,7 @@ export class StorageDiagnostic implements DiagnosticTest {
 
   async isSupported(): Promise<boolean> {
     try {
-      const free = Paths.availableDiskSpace;
+      const free = await getFreeDiskStorageAsync();
       return free > 0;
     } catch {
       return false;
@@ -21,8 +21,8 @@ export class StorageDiagnostic implements DiagnosticTest {
     try {
       onProgress?.('Checking disk storage...');
 
-      const freeStorage = Paths.availableDiskSpace;
-      const totalStorage = Paths.totalDiskSpace;
+      const freeStorage = await getFreeDiskStorageAsync();
+      const totalStorage = await getTotalDiskCapacityAsync();
       const usedStorage = totalStorage - freeStorage;
       const usagePercent = totalStorage > 0 ? Math.round((usedStorage / totalStorage) * 100) : 0;
 
@@ -69,9 +69,9 @@ export class StorageDiagnostic implements DiagnosticTest {
 }
 
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
+  if (bytes <= 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }

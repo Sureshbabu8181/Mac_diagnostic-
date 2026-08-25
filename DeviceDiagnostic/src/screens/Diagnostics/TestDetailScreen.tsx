@@ -32,8 +32,8 @@ const STATUS_COLORS: Record<DiagnosticStatus, string> = {
 };
 
 export default function TestDetailScreen() {
-  const route = useRoute<RouteProps>();
-  const { testId } = route.params;
+  const route = useRoute<any>();
+  const testId = route.params?.testId as string | undefined;
 
   const [test, setTest] = useState<DiagnosticTest | null>(null);
   const [result, setResult] = useState<DiagnosticResult | null>(null);
@@ -74,6 +74,7 @@ export default function TestDetailScreen() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={{ color: '#888', marginTop: 8 }}>{testId ? 'Loading...' : 'No test specified'}</Text>
       </View>
     );
   }

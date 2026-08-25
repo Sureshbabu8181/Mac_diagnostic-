@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  StatusBar,
   Dimensions,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -135,7 +135,7 @@ export default function DisplayTestScreen() {
       onPress={cyclePattern}
       onLongPress={handleLongPress}
     >
-      <StatusBar hidden />
+      <StatusBar hidden={true} />
 
       {!isSolid && renderPattern()}
 

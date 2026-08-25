@@ -9,21 +9,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Button, TextInput } from 'react-native-paper';
-import { File, Directory, Paths } from 'expo-file-system';
+import { documentDirectory, getInfoAsync, readAsStringAsync, writeAsStringAsync } from 'expo-file-system/legacy';
 
 import { DEFAULT_CONFIG } from '../../config/diagnostics';
 import { Database } from '../../database/Database';
 import type { ThresholdConfig } from '../../types';
 
 const db = Database.getInstance();
-
-function getSettingsFile(): File {
-  const dir = new Directory(Paths.document, 'settings');
-  if (!dir.exists) {
-    dir.create();
-  }
-  return new File(dir, 'settings.json');
-}
+const SETTINGS_PATH = (documentDirectory ?? '') + 'settings.json';
 
 interface StoredSettings {
   technicianPin?: string;
@@ -33,7 +26,6 @@ interface StoredSettings {
 export default function SettingsScreen() {
   const [thresholds, setThresholds] = useState<ThresholdConfig>(DEFAULT_CONFIG.thresholds);
   const [technicianMode, setTechnicianMode] = useState(false);
-  const [pinInput, setPinInput] = useState('');
   const [showPinModal, setShowPinModal] = useState(false);
   const [savedPin, setSavedPin] = useState<string | null>(null);
 
@@ -43,9 +35,9 @@ export default function SettingsScreen() {
 
   const loadSettings = async () => {
     try {
-      const file = getSettingsFile();
-      if (file.exists) {
-        const raw = await file.text();
+      const info = await getInfoAsync(SETTINGS_PATH);
+      if (info.exists) {
+        const raw = await readAsStringAsync(SETTINGS_PATH);
         const data: StoredSettings = JSON.parse(raw);
         setSavedPin(data.technicianPin ?? null);
         setTechnicianMode(data.technicianMode ?? false);
@@ -57,8 +49,7 @@ export default function SettingsScreen() {
 
   const saveSettings = async (data: StoredSettings) => {
     try {
-      const file = getSettingsFile();
-      await file.write(JSON.stringify(data));
+      await writeAsStringAsync(SETTINGS_PATH, JSON.stringify(data));
     } catch (err) {
       console.error('Failed to save settings:', err);
     }

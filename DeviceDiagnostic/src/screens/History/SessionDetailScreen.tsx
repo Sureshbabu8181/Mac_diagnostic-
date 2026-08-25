@@ -45,8 +45,8 @@ const STATUS_ICONS: Record<DiagnosticStatus, string> = {
 };
 
 export default function SessionDetailScreen() {
-  const route = useRoute<RouteProps>();
-  const { sessionId } = route.params;
+  const route = useRoute<any>();
+  const sessionId = (route.params?.sessionId as string) ?? '';
 
   const [session, setSession] = useState<DiagnosticSession | null>(null);
   const [loading, setLoading] = useState(true);
