@@ -1,5 +1,5 @@
 import { DiagnosticTest, DiagnosticResult } from '../../types';
-import { Gyroscope } from 'expo-sensors';
+import * as Sensors from 'expo-sensors';
 
 export class GyroscopeDiagnostic implements DiagnosticTest {
   id = 'gyroscope';
@@ -10,7 +10,7 @@ export class GyroscopeDiagnostic implements DiagnosticTest {
 
   async isSupported(): Promise<boolean> {
     try {
-      const available = await Gyroscope.isAvailableAsync();
+      const available = await Sensors.Gyroscope.isAvailableAsync();
       return available;
     } catch {
       return false;
@@ -22,8 +22,8 @@ export class GyroscopeDiagnostic implements DiagnosticTest {
       let resolved = false;
 
       const cleanup = () => {
-        Gyroscope.removeAllListeners();
-        Gyroscope.setUpdateInterval(1000);
+        Sensors.Gyroscope.removeAllListeners();
+        Sensors.Gyroscope.setUpdateInterval(1000);
       };
 
       const timeout = setTimeout(() => {
@@ -45,8 +45,8 @@ export class GyroscopeDiagnostic implements DiagnosticTest {
 
       onProgress?.('Subscribing to gyroscope data...');
 
-      Gyroscope.setUpdateInterval(100);
-      const subscription = Gyroscope.addListener(({ x, y, z }) => {
+      Sensors.Gyroscope.setUpdateInterval(100);
+      const subscription = Sensors.Gyroscope.addListener(({ x, y, z }) => {
         if (resolved) return;
         resolved = true;
         clearTimeout(timeout);

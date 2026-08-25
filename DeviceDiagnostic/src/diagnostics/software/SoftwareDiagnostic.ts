@@ -22,7 +22,7 @@ export class SoftwareDiagnostic implements DiagnosticTest {
       const osVersion = Platform.Version;
       const totalMemory = Device.totalMemory ?? 0;
 
-      const uptimeSeconds = Math.floor(performance.now() / 1000);
+      const uptimeSeconds = Math.floor(Date.now() / 1000);
       const hours = Math.floor(uptimeSeconds / 3600);
       const minutes = Math.floor((uptimeSeconds % 3600) / 60);
 

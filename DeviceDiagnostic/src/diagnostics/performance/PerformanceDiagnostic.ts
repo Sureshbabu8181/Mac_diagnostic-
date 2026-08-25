@@ -15,35 +15,35 @@ export class PerformanceDiagnostic implements DiagnosticTest {
     try {
       onProgress?.('Running CPU benchmark...');
 
-      const iterations = 5_000_000;
-      const start = performance.now();
+      const iterations = 5000000;
+      const start = Date.now();
 
       let result = 0;
       for (let i = 0; i < iterations; i++) {
         result += Math.sqrt(i) * Math.sin(i);
       }
 
-      const elapsed = performance.now() - start;
+      const elapsed = Date.now() - start;
       const opsPerSecond = Math.round(iterations / (elapsed / 1000));
 
       onProgress?.('Running floating-point benchmark...');
 
-      const fpStart = performance.now();
+      const fpStart = Date.now();
       let fpResult = 0;
-      for (let i = 0; i < 1_000_000; i++) {
+      for (let i = 0; i < 1000000; i++) {
         fpResult += Math.log(i + 1) * Math.cos(i);
       }
-      const fpElapsed = performance.now() - fpStart;
+      const fpElapsed = Date.now() - fpStart;
 
       let status: DiagnosticResult['status'] = 'PASS';
-      let message = `CPU benchmark completed in ${elapsed.toFixed(0)}ms`;
+      let message = `CPU benchmark completed in ${elapsed}ms`;
 
-      if (elapsed > 5000) {
-        status = 'WARNING';
-        message = `Slow CPU performance: ${elapsed.toFixed(0)}ms`;
-      } else if (elapsed > 10000) {
+      if (elapsed > 10000) {
         status = 'FAIL';
-        message = `Very slow CPU: ${elapsed.toFixed(0)}ms`;
+        message = `Very slow CPU: ${elapsed}ms`;
+      } else if (elapsed > 5000) {
+        status = 'WARNING';
+        message = `Slow CPU performance: ${elapsed}ms`;
       }
 
       return {
@@ -54,8 +54,8 @@ export class PerformanceDiagnostic implements DiagnosticTest {
         score: Math.max(0, Math.min(100, Math.round(100 - (elapsed / 100)))),
         message,
         details: {
-          'Math Benchmark': `${elapsed.toFixed(0)}ms`,
-          'FP Benchmark': `${fpElapsed.toFixed(0)}ms`,
+          'Math Benchmark': `${elapsed}ms`,
+          'FP Benchmark': `${fpElapsed}ms`,
           'Operations/sec': opsPerSecond.toLocaleString(),
           'Test Size': `${iterations.toLocaleString()} iterations`,
           'Checksum': result.toFixed(2),

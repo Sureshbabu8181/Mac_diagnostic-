@@ -31,11 +31,11 @@ export class ReportGenerator {
 
     report += 'TEST SUMMARY\n';
     report += '─────────────────\n';
-    report += `  ✓ Passed:           ${counts.pass}\n`;
-    report += `  ⚠ Warnings:         ${counts.warning}\n`;
-    report += `  ✗ Failed:           ${counts.fail}\n`;
-    report += `  - Not Supported:    ${counts.notSupported}\n`;
-    report += `  - Not Tested:       ${counts.notTested}\n\n`;
+    report += `  Passed:            ${counts.pass}\n`;
+    report += `  Warnings:          ${counts.warning}\n`;
+    report += `  Failed:            ${counts.fail}\n`;
+    report += `  Not Supported:     ${counts.notSupported}\n`;
+    report += `  Not Tested:        ${counts.notTested}\n\n`;
 
     report += 'DETAILED RESULTS\n';
     report += '═══════════════════════════════════════\n\n';
@@ -43,7 +43,7 @@ export class ReportGenerator {
     const categories = [...new Set(session.results.map(r => r.category))];
     for (const category of categories) {
       const categoryResults = session.results.filter(r => r.category === category);
-      report += `▸ ${category.toUpperCase()}\n`;
+      report += `> ${category.toUpperCase()}\n`;
       report += '─────────────────\n';
 
       for (const result of categoryResults) {
@@ -72,7 +72,8 @@ export class ReportGenerator {
     const report = await this.generateTextReport(session);
     const available = await Sharing.isAvailableAsync();
     if (available) {
-      await Sharing.shareAsync(`data:text/plain;base64,${btoa(report)}`, {
+      const encoded = encodeURIComponent(report);
+      await Sharing.shareAsync(`data:text/plain;charset=utf-8,${encoded}`, {
         mimeType: 'text/plain',
         dialogTitle: 'Share Diagnostic Report',
       });
@@ -81,12 +82,12 @@ export class ReportGenerator {
 
   private getStatusIcon(status: string): string {
     switch (status) {
-      case 'PASS': return '✓';
-      case 'WARNING': return '⚠';
-      case 'FAIL': return '✗';
-      case 'NOT_SUPPORTED': return '-';
-      case 'NOT_TESTED': return '?';
-      default: return '○';
+      case 'PASS': return 'OK';
+      case 'WARNING': return '!!';
+      case 'FAIL': return 'XX';
+      case 'NOT_SUPPORTED': return '--';
+      case 'NOT_TESTED': return '??';
+      default: return 'OO';
     }
   }
 }

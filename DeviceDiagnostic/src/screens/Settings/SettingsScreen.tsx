@@ -9,14 +9,21 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Button, TextInput } from 'react-native-paper';
-import { documentDirectory, getInfoAsync, readAsStringAsync, writeAsStringAsync } from 'expo-file-system/legacy';
+import { File, Directory, Paths } from 'expo-file-system';
 
 import { DEFAULT_CONFIG } from '../../config/diagnostics';
 import { Database } from '../../database/Database';
 import type { ThresholdConfig } from '../../types';
 
 const db = Database.getInstance();
-const SETTINGS_FILE = (documentDirectory ?? '') + 'settings.json';
+
+function getSettingsFile(): File {
+  const dir = new Directory(Paths.document, 'settings');
+  if (!dir.exists) {
+    dir.create();
+  }
+  return new File(dir, 'settings.json');
+}
 
 interface StoredSettings {
   technicianPin?: string;
@@ -36,9 +43,9 @@ export default function SettingsScreen() {
 
   const loadSettings = async () => {
     try {
-      const info = await getInfoAsync(SETTINGS_FILE);
-      if (info.exists) {
-        const raw = await readAsStringAsync(SETTINGS_FILE);
+      const file = getSettingsFile();
+      if (file.exists) {
+        const raw = await file.text();
         const data: StoredSettings = JSON.parse(raw);
         setSavedPin(data.technicianPin ?? null);
         setTechnicianMode(data.technicianMode ?? false);
@@ -50,7 +57,8 @@ export default function SettingsScreen() {
 
   const saveSettings = async (data: StoredSettings) => {
     try {
-      await writeAsStringAsync(SETTINGS_FILE, JSON.stringify(data));
+      const file = getSettingsFile();
+      await file.write(JSON.stringify(data));
     } catch (err) {
       console.error('Failed to save settings:', err);
     }
@@ -74,22 +82,10 @@ export default function SettingsScreen() {
       return;
     }
 
-    Alert.prompt?.(
-      'Enter PIN',
-      'Enter technician PIN to enable',
-      (text) => {
-        if (text === savedPin) {
-          setTechnicianMode(true);
-          saveSettings({ technicianMode: true });
-        } else {
-          Alert.alert('Invalid PIN');
-        }
-      }
-    ) ??
-      Alert.alert(
-        'Technician Mode',
-        'PIN verification required. Set a PIN first if you haven\'t.'
-      );
+    Alert.alert(
+      'Technician Mode',
+      'PIN verification required. Set a PIN first if you haven\'t.'
+    );
   };
 
   const clearAllData = () => {

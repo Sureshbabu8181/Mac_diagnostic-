@@ -1,5 +1,5 @@
 import { DiagnosticTest, DiagnosticResult } from '../../types';
-import { Accelerometer } from 'expo-sensors';
+import * as Sensors from 'expo-sensors';
 
 export class AccelerometerDiagnostic implements DiagnosticTest {
   id = 'accelerometer';
@@ -10,7 +10,7 @@ export class AccelerometerDiagnostic implements DiagnosticTest {
 
   async isSupported(): Promise<boolean> {
     try {
-      const available = await Accelerometer.isAvailableAsync();
+      const available = await Sensors.Accelerometer.isAvailableAsync();
       return available;
     } catch {
       return false;
@@ -22,8 +22,8 @@ export class AccelerometerDiagnostic implements DiagnosticTest {
       let resolved = false;
 
       const cleanup = () => {
-        Accelerometer.removeAllListeners();
-        Accelerometer.setUpdateInterval(1000);
+        Sensors.Accelerometer.removeAllListeners();
+        Sensors.Accelerometer.setUpdateInterval(1000);
       };
 
       const timeout = setTimeout(() => {
@@ -45,8 +45,8 @@ export class AccelerometerDiagnostic implements DiagnosticTest {
 
       onProgress?.('Subscribing to accelerometer data...');
 
-      Accelerometer.setUpdateInterval(100);
-      const subscription = Accelerometer.addListener(({ x, y, z }) => {
+      Sensors.Accelerometer.setUpdateInterval(100);
+      const subscription = Sensors.Accelerometer.addListener(({ x, y, z }) => {
         if (resolved) return;
         resolved = true;
         clearTimeout(timeout);

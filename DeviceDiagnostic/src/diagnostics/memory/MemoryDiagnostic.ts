@@ -16,9 +16,9 @@ export class MemoryDiagnostic implements DiagnosticTest {
       let heapUsedMB: number | null = null;
 
       try {
-        const perfWithMemory = performance as unknown as { memory?: { usedJSHeapSize: number } };
-        if (perfWithMemory.memory) {
-          heapUsedMB = perfWithMemory.memory.usedJSHeapSize / 1024 / 1024;
+        const g = globalThis as any;
+        if (g.performance && g.performance.memory) {
+          heapUsedMB = g.performance.memory.usedJSHeapSize / 1024 / 1024;
         }
       } catch {
         // performance.memory not available on all platforms

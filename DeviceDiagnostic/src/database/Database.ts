@@ -16,26 +16,21 @@ export class Database {
   async getDb(): Promise<SQLite.SQLiteDatabase> {
     if (!db) {
       db = await SQLite.openDatabaseAsync('diagnostics.db');
-      await this.initTables();
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS sessions (
+          id TEXT PRIMARY KEY,
+          deviceId TEXT,
+          deviceModel TEXT,
+          deviceManufacturer TEXT,
+          osVersion TEXT,
+          healthScore INTEGER,
+          timestamp TEXT,
+          duration INTEGER,
+          results TEXT
+        );
+      `);
     }
     return db;
-  }
-
-  private async initTables(): Promise<void> {
-    const database = await this.getDb();
-    await database.execAsync(`
-      CREATE TABLE IF NOT EXISTS sessions (
-        id TEXT PRIMARY KEY,
-        deviceId TEXT,
-        deviceModel TEXT,
-        deviceManufacturer TEXT,
-        osVersion TEXT,
-        healthScore INTEGER,
-        timestamp TEXT,
-        duration INTEGER,
-        results TEXT
-      );
-    `);
   }
 
   async saveSession(session: DiagnosticSession): Promise<void> {
@@ -65,7 +60,7 @@ export class Database {
 
     return rows.map(row => ({
       ...row,
-      results: JSON.parse(row.results),
+      results: JSON.parse(row.results || '[]'),
     }));
   }
 
@@ -77,7 +72,7 @@ export class Database {
     );
 
     if (!row) return null;
-    return { ...row, results: JSON.parse(row.results) };
+    return { ...row, results: JSON.parse(row.results || '[]') };
   }
 
   async deleteSession(id: string): Promise<void> {

@@ -1,5 +1,5 @@
 import { DiagnosticTest, DiagnosticResult } from '../../types';
-import { Magnetometer } from 'expo-sensors';
+import * as Sensors from 'expo-sensors';
 
 export class MagnetometerDiagnostic implements DiagnosticTest {
   id = 'magnetometer';
@@ -10,7 +10,7 @@ export class MagnetometerDiagnostic implements DiagnosticTest {
 
   async isSupported(): Promise<boolean> {
     try {
-      const available = await Magnetometer.isAvailableAsync();
+      const available = await Sensors.Magnetometer.isAvailableAsync();
       return available;
     } catch {
       return false;
@@ -22,8 +22,8 @@ export class MagnetometerDiagnostic implements DiagnosticTest {
       let resolved = false;
 
       const cleanup = () => {
-        Magnetometer.removeAllListeners();
-        Magnetometer.setUpdateInterval(1000);
+        Sensors.Magnetometer.removeAllListeners();
+        Sensors.Magnetometer.setUpdateInterval(1000);
       };
 
       const timeout = setTimeout(() => {
@@ -45,8 +45,8 @@ export class MagnetometerDiagnostic implements DiagnosticTest {
 
       onProgress?.('Subscribing to magnetometer data...');
 
-      Magnetometer.setUpdateInterval(100);
-      const subscription = Magnetometer.addListener(({ x, y, z }) => {
+      Sensors.Magnetometer.setUpdateInterval(100);
+      const subscription = Sensors.Magnetometer.addListener(({ x, y, z }) => {
         if (resolved) return;
         resolved = true;
         clearTimeout(timeout);

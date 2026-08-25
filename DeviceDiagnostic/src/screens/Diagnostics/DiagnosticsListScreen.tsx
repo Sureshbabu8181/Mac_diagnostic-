@@ -45,8 +45,9 @@ const STATUS_ICONS: Record<string, string> = {
 
 export default function DiagnosticsListScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteProps>();
-  const { category, title } = route.params;
+  const route = useRoute<any>();
+  const category = route.params?.category as DiagnosticCategory | undefined;
+  const title = route.params?.title as string | undefined;
 
   const [tests, setTests] = useState<DiagnosticTest[]>([]);
   const [results, setResults] = useState<Map<string, DiagnosticResult>>(new Map());
@@ -64,7 +65,7 @@ export default function DiagnosticsListScreen() {
   const loadTests = async () => {
     setLoading(true);
     try {
-      const categoryTests = engine.getTestsByCategory(category);
+      const categoryTests = category ? engine.getTestsByCategory(category) : engine.getTests();
       const withSupport = await Promise.all(
         categoryTests.map(async (t) => ({
           test: t,
@@ -83,11 +84,18 @@ export default function DiagnosticsListScreen() {
     setRunning(true);
     setProgress({ current: 0, total: tests.length });
     try {
-      const categoryResults = await engine.runCategoryTests(category, (current, total) => {
-        setProgress({ current, total });
-      });
       const map = new Map<string, DiagnosticResult>();
-      categoryResults.forEach((r) => map.set(r.testId, r));
+      if (category) {
+        const categoryResults = await engine.runCategoryTests(category, (current, total) => {
+          setProgress({ current, total });
+        });
+        categoryResults.forEach((r: DiagnosticResult) => map.set(r.testId, r));
+      } else {
+        const session = await engine.runAllTests((current, total) => {
+          setProgress({ current, total });
+        });
+        session.results.forEach((r: DiagnosticResult) => map.set(r.testId, r));
+      }
       setResults(map);
     } catch (err) {
       console.error('Category run failed:', err);

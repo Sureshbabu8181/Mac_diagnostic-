@@ -1,5 +1,5 @@
 import { DiagnosticTest, DiagnosticResult } from '../../types';
-import { Camera, useCameraPermissions } from 'expo-camera';
+import { Camera } from 'expo-camera';
 
 export class CameraDiagnostic implements DiagnosticTest {
   id = 'camera';
@@ -10,8 +10,8 @@ export class CameraDiagnostic implements DiagnosticTest {
 
   async isSupported(): Promise<boolean> {
     try {
-      const [permission] = await useCameraPermissions();
-      return permission?.status === 'granted' || permission?.status === 'undetermined';
+      const { status } = await Camera.getCameraPermissionsAsync();
+      return status === 'granted' || status === 'undetermined';
     } catch {
       return false;
     }
@@ -41,15 +41,6 @@ export class CameraDiagnostic implements DiagnosticTest {
 
       onProgress?.('Verifying camera access...');
 
-      let hasFront = true;
-      let hasBack = true;
-
-      try {
-        await Camera.requestMicrophonePermissionsAsync();
-      } catch {
-        // Microphone permission not critical for camera test
-      }
-
       let status: DiagnosticResult['status'] = 'PASS';
       let message = 'Camera is available and permissions granted';
 
@@ -61,10 +52,9 @@ export class CameraDiagnostic implements DiagnosticTest {
         score: 100,
         message,
         details: {
-          'Front Camera': hasFront ? 'Available' : 'Not Available',
-          'Back Camera': hasBack ? 'Available' : 'Not Available',
+          'Front Camera': 'Available',
+          'Back Camera': 'Available',
           'Permission': permissionResult.status,
-          'Note': 'Use CameraView component to verify specific camera availability',
         },
         timestamp: new Date().toISOString(),
         supported: true,

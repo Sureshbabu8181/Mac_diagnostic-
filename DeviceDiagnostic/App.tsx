@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { PaperProvider, MD3DarkTheme } from 'react-native-paper';
 
 import DashboardScreen from './src/screens/Dashboard/DashboardScreen';
 import DiagnosticsListScreen from './src/screens/Diagnostics/DiagnosticsListScreen';
@@ -14,24 +15,31 @@ import HistoryScreen from './src/screens/History/HistoryScreen';
 import SessionDetailScreen from './src/screens/History/SessionDetailScreen';
 import ReportsScreen from './src/screens/Reports/ReportsScreen';
 import SettingsScreen from './src/screens/Settings/SettingsScreen';
-import { DiagnosticEngine } from './src/core/DiagnosticEngine';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-const engine = new DiagnosticEngine();
+const theme = {
+  ...MD3DarkTheme,
+  colors: {
+    ...MD3DarkTheme.colors,
+    primary: '#4CAF50',
+    surface: '#1E1E2E',
+    background: '#121212',
+  },
+};
+
+const screenOptions = {
+  headerStyle: { backgroundColor: '#1E1E2E' },
+  headerTintColor: '#E0E0E0',
+  contentStyle: { backgroundColor: '#121212' },
+};
 
 function DiagnosticsStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: '#1E1E2E' },
-        headerTintColor: '#E0E0E0',
-        contentStyle: { backgroundColor: '#121212' },
-      }}
-    >
-      <Stack.Screen name="DiagnosticsList" component={DiagnosticsListScreen} initialParams={{ engine }} options={{ title: 'Diagnostics' }} />
-      <Stack.Screen name="TestDetail" component={TestDetailScreen} initialParams={{ engine }} options={{ title: 'Test Detail' }} />
+    <Stack.Navigator screenOptions={screenOptions}>
+      <Stack.Screen name="DiagnosticsList" component={DiagnosticsListScreen} options={{ title: 'Diagnostics' }} />
+      <Stack.Screen name="TestDetail" component={TestDetailScreen} options={{ title: 'Test Detail' }} />
       <Stack.Screen name="DisplayTest" component={DisplayTestScreen} options={{ title: 'Display Test', headerShown: false }} />
       <Stack.Screen name="TouchTest" component={TouchTestScreen} options={{ title: 'Touch Test', headerShown: false }} />
     </Stack.Navigator>
@@ -40,13 +48,7 @@ function DiagnosticsStack() {
 
 function HistoryStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: '#1E1E2E' },
-        headerTintColor: '#E0E0E0',
-        contentStyle: { backgroundColor: '#121212' },
-      }}
-    >
+    <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen name="HistoryList" component={HistoryScreen} options={{ title: 'History' }} />
       <Stack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ title: 'Session Detail' }} />
     </Stack.Navigator>
@@ -55,48 +57,48 @@ function HistoryStack() {
 
 function DashboardStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: '#1E1E2E' },
-        headerTintColor: '#E0E0E0',
-        contentStyle: { backgroundColor: '#121212' },
-      }}
-    >
-      <Stack.Screen name="DashboardHome" component={DashboardScreen} initialParams={{ engine }} options={{ title: 'MAC Diagnostic Center' }} />
-      <Stack.Screen name="DiagnosticsCategory" component={DiagnosticsStack} options={{ headerShown: false }} />
+    <Stack.Navigator screenOptions={screenOptions}>
+      <Stack.Screen name="DashboardHome" component={DashboardScreen} options={{ title: 'MAC Diagnostic Center' }} />
+      <Stack.Screen name="DiagnosticsList" component={DiagnosticsListScreen} options={{ title: 'Diagnostics' }} />
+      <Stack.Screen name="TestDetail" component={TestDetailScreen} options={{ title: 'Test Detail' }} />
+      <Stack.Screen name="DisplayTest" component={DisplayTestScreen} options={{ title: 'Display Test', headerShown: false }} />
+      <Stack.Screen name="TouchTest" component={TouchTestScreen} options={{ title: 'Touch Test', headerShown: false }} />
+      <Stack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ title: 'Session Detail' }} />
     </Stack.Navigator>
   );
 }
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <StatusBar style="light" />
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarStyle: { backgroundColor: '#1E1E2E', borderTopColor: '#2A2A3E' },
-          tabBarActiveTintColor: '#4CAF50',
-          tabBarInactiveTintColor: '#888',
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName: keyof typeof Ionicons.glyphMap = 'home';
-            switch (route.name) {
-              case 'Dashboard': iconName = focused ? 'home' : 'home-outline'; break;
-              case 'DiagnosticsTab': iconName = focused ? 'construct' : 'construct-outline'; break;
-              case 'HistoryTab': iconName = focused ? 'time' : 'time-outline'; break;
-              case 'Reports': iconName = focused ? 'document-text' : 'document-text-outline'; break;
-              case 'Settings': iconName = focused ? 'settings' : 'settings-outline'; break;
-            }
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-        })}
-      >
-        <Tab.Screen name="Dashboard" component={DashboardStack} />
-        <Tab.Screen name="DiagnosticsTab" component={DiagnosticsStack} options={{ title: 'Diagnostics' }} />
-        <Tab.Screen name="HistoryTab" component={HistoryStack} options={{ title: 'History' }} />
-        <Tab.Screen name="Reports" component={ReportsScreen} />
-        <Tab.Screen name="Settings" component={SettingsScreen} />
-      </Tab.Navigator>
-    </NavigationContainer>
+    <PaperProvider theme={theme}>
+      <NavigationContainer>
+        <StatusBar style="light" />
+        <Tab.Navigator
+          screenOptions={({ route }) => ({
+            headerShown: false,
+            tabBarStyle: { backgroundColor: '#1E1E2E', borderTopColor: '#2A2A3E', paddingBottom: 4, height: 56 },
+            tabBarActiveTintColor: '#4CAF50',
+            tabBarInactiveTintColor: '#888',
+            tabBarIcon: ({ focused, color, size }) => {
+              let iconName: keyof typeof Ionicons.glyphMap = 'home';
+              switch (route.name) {
+                case 'Dashboard': iconName = focused ? 'home' : 'home-outline'; break;
+                case 'DiagnosticsTab': iconName = focused ? 'construct' : 'construct-outline'; break;
+                case 'HistoryTab': iconName = focused ? 'time' : 'time-outline'; break;
+                case 'Reports': iconName = focused ? 'document-text' : 'document-text-outline'; break;
+                case 'Settings': iconName = focused ? 'settings' : 'settings-outline'; break;
+              }
+              return <Ionicons name={iconName} size={size} color={color} />;
+            },
+          })}
+        >
+          <Tab.Screen name="Dashboard" component={DashboardStack} />
+          <Tab.Screen name="DiagnosticsTab" component={DiagnosticsStack} options={{ title: 'Diagnostics' }} />
+          <Tab.Screen name="HistoryTab" component={HistoryStack} options={{ title: 'History' }} />
+          <Tab.Screen name="Reports" component={ReportsScreen} />
+          <Tab.Screen name="Settings" component={SettingsScreen} />
+        </Tab.Navigator>
+      </NavigationContainer>
+    </PaperProvider>
   );
 }
