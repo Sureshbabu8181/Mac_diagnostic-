@@ -101,7 +101,7 @@ export default function ReportsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212' },
-  content: { padding: 16 },
+  content: { padding: 16, paddingBottom: 80 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#121212' },
   sectionTitle: { color: '#AAA', fontSize: 14, fontWeight: '600', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
   card: { backgroundColor: '#1E1E2E', marginBottom: 16, padding: 16, borderRadius: 12 },

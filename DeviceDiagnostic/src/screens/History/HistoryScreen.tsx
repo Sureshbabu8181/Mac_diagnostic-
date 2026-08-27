@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    paddingBottom: 8,
+    paddingBottom: 80,
   },
   headerTitle: { color: '#AAA', fontSize: 14, fontWeight: '500' },
   clearAllButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },

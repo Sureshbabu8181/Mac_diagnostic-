@@ -163,7 +163,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212' },
-  content: { padding: 16 },
+  content: { padding: 16, paddingBottom: 80 },
   sectionTitle: { color: '#AAA', fontSize: 14, fontWeight: '600', marginBottom: 10, marginTop: 8, textTransform: 'uppercase', letterSpacing: 1 },
   card: { backgroundColor: '#1E1E2E', marginBottom: 16, padding: 16, borderRadius: 12 },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#2A2A3A' },
