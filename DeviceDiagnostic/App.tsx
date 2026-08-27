@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import DashboardScreen from './src/screens/Dashboard/DashboardScreen';
 import DiagnosticsListScreen from './src/screens/Diagnostics/DiagnosticsListScreen';
@@ -47,11 +48,20 @@ function HistoryStackNavigator() {
 }
 
 function Tabs() {
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 20);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarStyle: { backgroundColor: '#1E1E2E', borderTopColor: '#2A2A3E', paddingBottom: 4, height: 56 },
+        tabBarStyle: {
+          backgroundColor: '#1E1E2E',
+          borderTopColor: '#2A2A3E',
+          paddingBottom: bottomPadding,
+          paddingTop: 6,
+          height: 56 + bottomPadding,
+        },
         tabBarActiveTintColor: '#4CAF50',
         tabBarInactiveTintColor: '#888',
         tabBarIcon: ({ focused, color, size }) => {
