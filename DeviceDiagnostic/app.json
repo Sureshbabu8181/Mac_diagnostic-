@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "DeviceDiagnostic",
-    "slug": "DeviceDiagnostic",
+    "name": "One Diagnose",
+    "slug": "OneDiagnose",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,13 +11,11 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#1565C0",
+        "foregroundImage": "./assets/icon.png",
+        "monochromeImage": "./assets/icon.png"
       },
-      "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.DeviceDiagnostic",
+      "package": "com.onediagnose.app",
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
@@ -34,19 +32,19 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow MAC Diagnostic to access your camera for testing."
+          "cameraPermission": "Allow One Diagnose to access your camera for testing."
         }
       ],
       [
         "expo-location",
         {
-          "locationPermission": "Allow MAC Diagnostic to access your location for GPS testing."
+          "locationPermission": "Allow One Diagnose to access your location for GPS testing."
         }
       ],
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Allow MAC Diagnostic to use Face ID for biometric testing."
+          "faceIDPermission": "Allow One Diagnose to use Face ID for biometric testing."
         }
       ]
     ]
