@@ -13,6 +13,7 @@ import DisplayTestScreen from './src/screens/Diagnostics/DisplayTestScreen';
 import TouchTestScreen from './src/screens/Diagnostics/TouchTestScreen';
 import PhysicalButtonTestScreen from './src/screens/Diagnostics/PhysicalButtonTestScreen';
 import BiometricTestScreen from './src/screens/Diagnostics/BiometricTestScreen';
+import CameraTestScreen from './src/screens/Diagnostics/CameraTestScreen';
 import HistoryScreen from './src/screens/History/HistoryScreen';
 import SessionDetailScreen from './src/screens/History/SessionDetailScreen';
 import ReportsScreen from './src/screens/Reports/ReportsScreen';
@@ -96,6 +97,7 @@ export default function App() {
         <RootStack.Screen name="TouchTest" component={TouchTestScreen} options={{ animation: 'slide_from_bottom' }} />
         <RootStack.Screen name="PhysicalButtonTest" component={PhysicalButtonTestScreen} options={{ animation: 'slide_from_bottom' }} />
         <RootStack.Screen name="BiometricTest" component={BiometricTestScreen} options={{ animation: 'slide_from_bottom' }} />
+        <RootStack.Screen name="CameraTest" component={CameraTestScreen} options={{ animation: 'slide_from_bottom' }} />
         <RootStack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ headerShown: true, ...screenOptions, title: 'Session Detail' }} />
       </RootStack.Navigator>
     </NavigationContainer>
