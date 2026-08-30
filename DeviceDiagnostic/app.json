@@ -56,7 +56,14 @@
         }
       ],
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      [
+        "react-native-ble-plx",
+        {
+          "bluetoothAlwaysPermission": "Allow One Diagnose to access Bluetooth to check device presence for testing.",
+          "neverForLocation": true
+        }
+      ]
     ]
   }
 }

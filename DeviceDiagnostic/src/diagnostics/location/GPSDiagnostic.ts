@@ -19,7 +19,14 @@ export class GPSDiagnostic implements DiagnosticTest {
 
   async run(onProgress?: (msg: string) => void): Promise<DiagnosticResult> {
     try {
-      onProgress?.('Checking location permissions...');
+      onProgress?.('Checking location permission and services...');
+
+      let servicesEnabled = false;
+      try {
+        servicesEnabled = await Location.hasServicesEnabledAsync();
+      } catch {
+        servicesEnabled = false;
+      }
 
       const permResult = await Location.requestForegroundPermissionsAsync();
       if (permResult.status !== 'granted') {
@@ -30,7 +37,28 @@ export class GPSDiagnostic implements DiagnosticTest {
           status: 'FAIL',
           message: 'Location permission denied',
           details: {
+            'Presence': 'GPS receiver present on device',
+            'Location Services': servicesEnabled ? 'Enabled' : 'Disabled',
             'Permission Status': permResult.status,
+            'Guidance': 'Grant location permission and run again',
+          },
+          timestamp: new Date().toISOString(),
+          supported: true,
+        };
+      }
+
+      if (!servicesEnabled) {
+        return {
+          testId: this.id,
+          testName: this.name,
+          category: this.category,
+          status: 'FAIL',
+          message: 'Location services are turned off',
+          details: {
+            'Presence': 'GPS receiver present on device',
+            'Location Services': 'Disabled',
+            'Permission Status': 'Granted',
+            'Guidance': 'Enable location services and run again',
           },
           timestamp: new Date().toISOString(),
           supported: true,
