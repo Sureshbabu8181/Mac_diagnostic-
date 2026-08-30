@@ -13,8 +13,9 @@
       "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#87CEEB",
-        "foregroundImage": "./assets/icon.png",
-        "monochromeImage": "./assets/icon.png"
+        "backgroundImage": "./assets/android-icon-background.png",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.onediagnose.app",
       "permissions": [
