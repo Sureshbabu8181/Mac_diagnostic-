@@ -2,7 +2,7 @@
   "expo": {
     "name": "One Diagnose",
     "slug": "OneDiagnose",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -10,6 +10,7 @@
       "supportsTablet": true
     },
     "android": {
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#87CEEB",
         "foregroundImage": "./assets/icon.png",
@@ -36,6 +37,12 @@
         }
       ],
       [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow One Diagnose to access your microphone for audio testing."
+        }
+      ],
+      [
         "expo-location",
         {
           "locationPermission": "Allow One Diagnose to access your location for GPS testing."
@@ -46,7 +53,9 @@
         {
           "faceIDPermission": "Allow One Diagnose to use Face ID for biometric testing."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-asset"
     ]
   }
 }

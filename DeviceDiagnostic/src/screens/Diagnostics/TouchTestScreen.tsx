@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,32 +13,17 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
-const COLS = 14;
+const COLS = 16;
 const CELL = Math.floor(width / COLS);
 const ROWS = Math.floor(height / CELL);
 const TOTAL = COLS * ROWS;
 
-type Mode = 'fill' | 'edge' | 'multi' | 'draw';
-
-const MODES: { key: Mode; label: string; icon: string }[] = [
-  { key: 'fill', label: 'Grid Fill', icon: 'grid-outline' },
-  { key: 'edge', label: 'Edge Test', icon: 'expand-outline' },
-  { key: 'multi', label: 'Multi-Touch', icon: 'finger-print-outline' },
-  { key: 'draw', label: 'Draw', icon: 'create-outline' },
-];
-
 export default function TouchTestScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [mode, setMode] = useState<Mode>('fill');
   const [touched, setTouched] = useState<Set<string>>(new Set());
-  const [edgeHits, setEdgeHits] = useState<Set<string>>(new Set());
-  const [drawLen, setDrawLen] = useState(0);
-  const [multiCount, setMultiCount] = useState(0);
 
   const touchedRef = useRef(new Set<string>());
-  const edgeRef = useRef(new Set<string>());
-  const drawRef = useRef(0);
 
   const mark = useCallback((px: number, py: number) => {
     const col = Math.floor(px / CELL);
@@ -59,115 +44,39 @@ export default function TouchTestScreen() {
     setTouched(new Set(touchedRef.current));
   }, []);
 
-  const markEdge = useCallback((px: number, py: number) => {
-    const zones: string[] = [];
-    if (py < CELL * 2) zones.push('Top');
-    if (py > (ROWS - 2) * CELL) zones.push('Bottom');
-    if (px < CELL * 2) zones.push('Left');
-    if (px > (COLS - 2) * CELL) zones.push('Right');
-    if (px < CELL * 3 && py < CELL * 3) zones.push('Top-Left');
-    if (px > (COLS - 3) * CELL && py < CELL * 3) zones.push('Top-Right');
-    if (px < CELL * 3 && py > (ROWS - 3) * CELL) zones.push('Bottom-Left');
-    if (px > (COLS - 3) * CELL && py > (ROWS - 3) * CELL) zones.push('Bottom-Right');
-    zones.forEach((z) => edgeRef.current.add(z));
-    setEdgeHits(new Set(edgeRef.current));
-  }, []);
-
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (_, gs) => {
-        if (mode === 'fill') mark(gs.x0, gs.y0);
-        else if (mode === 'edge') markEdge(gs.x0, gs.y0);
-        else if (mode === 'multi') setMultiCount(1);
-        else { drawRef.current = 1; setDrawLen(1); }
-      },
-      onPanResponderMove: (_, gs) => {
-        const x = gs.moveX;
-        const y = gs.y0 + gs.dy;
-        if (mode === 'fill') {
-          mark(x, y);
-        } else if (mode === 'edge') {
-          markEdge(x, y);
-        } else if (mode === 'multi') {
-          setMultiCount(Math.min(Math.floor(Math.abs(gs.dx) / 20) + 1, 5));
-        } else {
-          drawRef.current++;
-          setDrawLen(drawRef.current);
-        }
-      },
-      onPanResponderRelease: () => {
-        if (mode === 'multi') setTimeout(() => setMultiCount(0), 500);
-      },
+      onPanResponderGrant: (_, gs) => mark(gs.x0, gs.y0),
+      onPanResponderMove: (_, gs) => mark(gs.moveX, gs.y0 + gs.dy),
     })
   ).current;
 
   const coverage = Math.round((touched.size / TOTAL) * 100);
-  const edgeCoverage = Math.round((edgeHits.size / 8) * 100);
   const color = coverage >= 80 ? '#4CAF50' : coverage >= 40 ? '#FF9800' : '#F44336';
 
   const reset = useCallback(() => {
     touchedRef.current.clear();
-    edgeRef.current.clear();
-    drawRef.current = 0;
     setTouched(new Set());
-    setEdgeHits(new Set());
-    setDrawLen(0);
-    setMultiCount(0);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      touchedRef.current.clear();
+    };
   }, []);
 
   const cells: React.ReactNode[] = [];
-  if (mode === 'fill' || mode === 'draw') {
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        const key = `${r}-${c}`;
-        const on = touched.has(key);
-        cells.push(
-          <View key={key} style={[styles.cell, on && styles.cellOn]}>
-            {on && <View style={styles.cellInner} />}
-          </View>
-        );
-      }
-    }
-  }
-
-  // Edge mode: highlight border cells
-  if (mode === 'edge') {
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        const isTop = r <= 1;
-        const isBottom = r >= ROWS - 2;
-        const isLeft = c <= 1;
-        const isRight = c >= COLS - 2;
-        const isCorner = (isTop || isBottom) && (isLeft || isRight);
-        const isBorder = isTop || isBottom || isLeft || isRight;
-
-        let zone: string | null = null;
-        if (isTop && isLeft) zone = 'Top-Left';
-        else if (isTop && isRight) zone = 'Top-Right';
-        else if (isBottom && isLeft) zone = 'Bottom-Left';
-        else if (isBottom && isRight) zone = 'Bottom-Right';
-        else if (isTop) zone = 'Top';
-        else if (isBottom) zone = 'Bottom';
-        else if (isLeft) zone = 'Left';
-        else if (isRight) zone = 'Right';
-
-        const hit = zone ? edgeHits.has(zone) : false;
-        cells.push(
-          <View
-            key={`${r}-${c}`}
-            style={[
-              styles.cell,
-              isBorder && styles.edgeCell,
-              isCorner && styles.edgeCorner,
-              hit && styles.cellOn,
-            ]}
-          >
-            {hit && <View style={styles.cellInner} />}
-          </View>
-        );
-      }
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const key = `${r}-${c}`;
+      const on = touched.has(key);
+      cells.push(
+        <View key={key} style={[styles.cell, on && styles.cellOn]}>
+          {on && <View style={styles.cellInner} />}
+        </View>
+      );
     }
   }
 
@@ -175,58 +84,37 @@ export default function TouchTestScreen() {
     <View style={styles.container}>
       <StatusBar hidden />
 
-      {/* Top bar */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 4 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color="#FFF" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Touch Test</Text>
-        <TouchableOpacity onPress={reset} style={styles.backBtn}>
-          <Ionicons name="refresh" size={20} color="#FFF" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Mode tabs */}
-      <View style={styles.modeBar}>
-        {MODES.map((m) => (
-          <TouchableOpacity
-            key={m.key}
-            style={[styles.modeTab, mode === m.key && styles.modeTabActive]}
-            onPress={() => { reset(); setMode(m.key); }}
-          >
-            <Ionicons name={m.icon as any} size={14} color={mode === m.key ? '#FFF' : '#888'} />
-            <Text style={[styles.modeLabel, mode === m.key && styles.modeLabelActive]}>
-              {m.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Grid area — fills remaining space */}
+      {/* Grid fills the entire screen */}
       <View style={styles.gridWrap} {...panResponder.panHandlers}>
-        <View style={styles.grid}>
-          {cells}
-        </View>
-
-        {/* Multi-touch overlay */}
-        {mode === 'multi' && multiCount > 0 && (
-          <View style={styles.multiOverlay}>
-            <Text style={styles.multiText}>{multiCount} finger{multiCount > 1 ? 's' : ''}</Text>
-          </View>
-        )}
+        <View style={styles.grid}>{cells}</View>
       </View>
 
-      {/* Bottom stats */}
-      <View style={[styles.statsBar, { paddingBottom: insets.bottom + 6 }]}>
-        <View style={styles.statsRow}>
-          <View style={[styles.dot, { backgroundColor: color }]} />
-          <Text style={[styles.statsText, { color }]}>
-            {mode === 'fill' && `${coverage}% · ${touched.size}/${TOTAL}`}
-            {mode === 'edge' && `${edgeCoverage}% · ${edgeHits.size}/8`}
-            {mode === 'multi' && `${multiCount} fingers`}
-            {mode === 'draw' && `${drawLen} points`}
-          </Text>
-        </View>
+      {/* Floating back button */}
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={[styles.backBtn, { top: insets.top + 8 }]}
+      >
+        <Ionicons name="arrow-back" size={24} color="#FFF" />
+      </TouchableOpacity>
+
+      {/* Floating coverage indicator */}
+      <View style={[styles.coveragePill, { top: insets.top + 8 }]} pointerEvents="none">
+        <View style={[styles.dot, { backgroundColor: color }]} />
+        <Text style={[styles.coverageText, { color }]}>
+          {coverage}% · {touched.size}/{TOTAL}
+        </Text>
+      </View>
+
+      {/* Floating reset button */}
+      <TouchableOpacity
+        onPress={reset}
+        style={[styles.resetBtn, { top: insets.top + 8 }]}
+      >
+        <Ionicons name="refresh" size={22} color="#FFF" />
+      </TouchableOpacity>
+
+      <View style={styles.instruction} pointerEvents="none">
+        <Text style={styles.instructionText}>Touch and drag across the whole screen to test</Text>
       </View>
     </View>
   );
@@ -234,41 +122,8 @@ export default function TouchTestScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingBottom: 4,
-    backgroundColor: '#1a1a2e',
-    zIndex: 10,
-  },
-  backBtn: { padding: 8 },
-  title: { flex: 1, color: '#FFF', fontSize: 16, fontWeight: '700', textAlign: 'center' },
-  modeBar: {
-    flexDirection: 'row',
-    backgroundColor: '#1a1a2e',
-    paddingHorizontal: 8,
-    paddingBottom: 6,
-    gap: 6,
-  },
-  modeTab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#333',
-    paddingVertical: 7,
-    borderRadius: 6,
-    gap: 4,
-  },
-  modeTabActive: { backgroundColor: '#4CAF50' },
-  modeLabel: { color: '#888', fontSize: 10, fontWeight: '600' },
-  modeLabelActive: { color: '#FFF' },
   gridWrap: { flex: 1, backgroundColor: '#000' },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: {
     width: CELL,
     height: CELL,
@@ -288,30 +143,49 @@ const styles = StyleSheet.create({
     backgroundColor: '#6abf3a',
     borderRadius: 2,
   },
-  edgeCell: {
-    backgroundColor: '#f0f0f0',
-    borderColor: '#999',
-  },
-  edgeCorner: {
-    backgroundColor: '#ffe0b2',
-    borderColor: '#ffb74d',
-  },
-  multiOverlay: {
+  backBtn: {
     position: 'absolute',
-    top: '45%',
+    left: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#00000099',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
+  resetBtn: {
+    position: 'absolute',
+    right: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#00000099',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
+  coveragePill: {
+    position: 'absolute',
     alignSelf: 'center',
-    backgroundColor: '#0008',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00000099',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    zIndex: 20,
   },
-  multiText: { color: '#FFF', fontSize: 28, fontWeight: '700' },
-  statsBar: {
-    backgroundColor: '#1a1a2e',
+  dot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  coverageText: { fontSize: 13, fontWeight: '700' },
+  instruction: {
+    position: 'absolute',
+    bottom: 24,
+    alignSelf: 'center',
+    backgroundColor: '#00000099',
     paddingHorizontal: 16,
-    paddingTop: 6,
+    paddingVertical: 8,
+    borderRadius: 16,
   },
-  statsRow: { flexDirection: 'row', alignItems: 'center' },
-  dot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-  statsText: { fontSize: 13, fontWeight: '600' },
+  instructionText: { color: '#FFF', fontSize: 13, fontWeight: '600' },
 });

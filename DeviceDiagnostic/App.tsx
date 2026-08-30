@@ -14,6 +14,8 @@ import TouchTestScreen from './src/screens/Diagnostics/TouchTestScreen';
 import PhysicalButtonTestScreen from './src/screens/Diagnostics/PhysicalButtonTestScreen';
 import BiometricTestScreen from './src/screens/Diagnostics/BiometricTestScreen';
 import CameraTestScreen from './src/screens/Diagnostics/CameraTestScreen';
+import MicrophoneTestScreen from './src/screens/Diagnostics/MicrophoneTestScreen';
+import SpeakerTestScreen from './src/screens/Diagnostics/SpeakerTestScreen';
 import HistoryScreen from './src/screens/History/HistoryScreen';
 import SessionDetailScreen from './src/screens/History/SessionDetailScreen';
 import ReportsScreen from './src/screens/Reports/ReportsScreen';
@@ -98,6 +100,8 @@ export default function App() {
         <RootStack.Screen name="PhysicalButtonTest" component={PhysicalButtonTestScreen} options={{ animation: 'slide_from_bottom' }} />
         <RootStack.Screen name="BiometricTest" component={BiometricTestScreen} options={{ animation: 'slide_from_bottom' }} />
         <RootStack.Screen name="CameraTest" component={CameraTestScreen} options={{ animation: 'slide_from_bottom' }} />
+        <RootStack.Screen name="MicrophoneTest" component={MicrophoneTestScreen} options={{ animation: 'slide_from_bottom' }} />
+        <RootStack.Screen name="SpeakerTest" component={SpeakerTestScreen} options={{ animation: 'slide_from_bottom' }} />
         <RootStack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ headerShown: true, ...screenOptions, title: 'Session Detail' }} />
       </RootStack.Navigator>
     </NavigationContainer>

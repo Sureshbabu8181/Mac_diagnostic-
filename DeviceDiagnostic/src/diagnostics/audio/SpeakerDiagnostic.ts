@@ -4,7 +4,7 @@ export class SpeakerDiagnostic implements DiagnosticTest {
   id = 'speaker';
   name = 'Speaker';
   category: 'hardware' = 'hardware';
-  description = 'Tests speaker availability (audio playback requires manual verification)';
+  description = 'Plays test tones to verify loud speaker and earpiece output';
   icon = 'volume-up';
 
   async isSupported(): Promise<boolean> {
@@ -18,10 +18,10 @@ export class SpeakerDiagnostic implements DiagnosticTest {
       category: this.category,
       status: 'WARNING',
       score: 50,
-      message: 'Speaker detected — play a video or music to verify audio output',
+      message: 'Use the Speaker test tones to verify loud speaker and earpiece output',
       details: {
         'Test Type': 'Manual verification required',
-        'Note': 'expo-av is deprecated in SDK 57. Use system audio to verify.',
+        'Note': 'Open the speaker test to play tones and confirm each speaker.',
       },
       timestamp: new Date().toISOString(),
       supported: true,

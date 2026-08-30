@@ -4,7 +4,7 @@ export class MicrophoneDiagnostic implements DiagnosticTest {
   id = 'microphone';
   name = 'Microphone';
   category: 'hardware' = 'hardware';
-  description = 'Tests microphone availability (recording requires manual verification)';
+  description = 'Records audio and plays it back to verify microphone input';
   icon = 'microphone';
 
   async isSupported(): Promise<boolean> {
@@ -18,10 +18,10 @@ export class MicrophoneDiagnostic implements DiagnosticTest {
       category: this.category,
       status: 'WARNING',
       score: 50,
-      message: 'Microphone detected — use a voice recorder app to verify audio input',
+      message: 'Use the Record & Play option in the Microphone test to verify audio input',
       details: {
         'Test Type': 'Manual verification required',
-        'Note': 'expo-av is deprecated in SDK 57. Use system recorder to verify.',
+        'Note': 'Open the microphone test to record and play back your voice.',
       },
       timestamp: new Date().toISOString(),
       supported: true,

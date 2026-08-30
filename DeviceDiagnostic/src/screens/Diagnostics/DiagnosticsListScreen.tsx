@@ -21,6 +21,8 @@ const MANUAL_TESTS: Record<string, string> = {
   display: 'DisplayTest',
   touch: 'TouchTest',
   camera: 'CameraTest',
+  microphone: 'MicrophoneTest',
+  speaker: 'SpeakerTest',
   physical_buttons: 'PhysicalButtonTest',
   fingerprint: 'BiometricTest',
 };
