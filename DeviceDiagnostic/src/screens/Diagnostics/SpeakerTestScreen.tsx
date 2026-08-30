@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -19,30 +19,35 @@ export default function SpeakerTestScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
-  const [uri, setUri] = useState<string | null>(null);
   const [active, setActive] = useState<SpeakerKind | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [playToken, setPlayToken] = useState(0);
   const [loudVerdict, setLoudVerdict] = useState<'PASS' | 'FAIL' | null>(null);
   const [earVerdict, setEarVerdict] = useState<'PASS' | 'FAIL' | null>(null);
 
-  const player = useAudioPlayer(uri ? { uri } : null);
+  const player = useAudioPlayer();
   const status = useAudioPlayerStatus(player);
   const isPlaying = status.playing;
 
+  useEffect(() => {
+    if (playToken === 0) return;
+    if (status.isLoaded) {
+      player.play();
+      setPlayToken(0);
+    }
+  }, [playToken, status.isLoaded]);
+
   const playTone = async (kind: SpeakerKind) => {
     setError(null);
-    if (isPlaying) {
-      player.pause();
-      player.seekTo(0);
-    }
     setGenerating(true);
     try {
+      player.pause();
       const freq = kind === 'loud' ? 440 : 1000;
       const fileUri = await createToneFile({ frequency: freq, durationSeconds: 2 });
-      setUri(fileUri);
+      player.replace({ uri: fileUri });
       setActive(kind);
-      setTimeout(() => player.play(), 50);
+      setPlayToken((t) => t + 1);
     } catch (e) {
       setError('Could not generate the test tone.');
       console.error(e);
@@ -53,7 +58,7 @@ export default function SpeakerTestScreen() {
 
   const stopPlay = () => {
     player.pause();
-    player.seekTo(0);
+    setPlayToken(0);
   };
 
   return (
