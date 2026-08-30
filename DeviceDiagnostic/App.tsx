@@ -17,6 +17,7 @@ import CameraTestScreen from './src/screens/Diagnostics/CameraTestScreen';
 import MicrophoneTestScreen from './src/screens/Diagnostics/MicrophoneTestScreen';
 import SpeakerTestScreen from './src/screens/Diagnostics/SpeakerTestScreen';
 import SplashScreen from './src/screens/Splash/SplashScreen';
+import DeviceDetailsScreen from './src/screens/DeviceDetails/DeviceDetailsScreen';
 import HistoryScreen from './src/screens/History/HistoryScreen';
 import SessionDetailScreen from './src/screens/History/SessionDetailScreen';
 import ReportsScreen from './src/screens/Reports/ReportsScreen';
@@ -98,6 +99,7 @@ export default function App() {
         <RootStack.Screen name="Splash" component={SplashScreen} />
         <RootStack.Screen name="Tabs" component={Tabs} />
         <RootStack.Screen name="DisplayTest" component={DisplayTestScreen} options={{ animation: 'slide_from_bottom' }} />
+        <RootStack.Screen name="DeviceDetails" component={DeviceDetailsScreen} options={{ headerShown: true, ...screenOptions, title: 'Device Details' }} />
         <RootStack.Screen name="TouchTest" component={TouchTestScreen} options={{ animation: 'slide_from_bottom' }} />
         <RootStack.Screen name="PhysicalButtonTest" component={PhysicalButtonTestScreen} options={{ animation: 'slide_from_bottom' }} />
         <RootStack.Screen name="BiometricTest" component={BiometricTestScreen} options={{ animation: 'slide_from_bottom' }} />

@@ -109,15 +109,18 @@ export default function DashboardScreen() {
       contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 72 }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4CAF50" />}
     >
-      <View style={styles.deviceCard}>
+      <TouchableOpacity style={styles.deviceCard} onPress={() => navigation.navigate('DeviceDetails')} activeOpacity={0.7}>
         <View style={styles.cardHeader}>
           <Ionicons name="phone-portrait-outline" size={20} color="#4CAF50" />
           <Text style={styles.cardTitle}>Device Info</Text>
+          <View style={{ flex: 1 }} />
+          <Ionicons name="chevron-forward" size={18} color="#4CAF50" />
         </View>
         <View style={styles.infoRow}><Text style={styles.infoLabel}>Model</Text><Text style={styles.infoValue}>{deviceInfo.model}</Text></View>
         <View style={styles.infoRow}><Text style={styles.infoLabel}>Manufacturer</Text><Text style={styles.infoValue}>{deviceInfo.manufacturer}</Text></View>
         <View style={styles.infoRow}><Text style={styles.infoLabel}>OS</Text><Text style={styles.infoValue}>{deviceInfo.platform} {deviceInfo.osVersion}</Text></View>
-      </View>
+        <Text style={styles.deviceCardHint}>Tap for full device details</Text>
+      </TouchableOpacity>
 
       {session && (
         <View style={styles.scoreCard}>
@@ -209,6 +212,7 @@ const styles = StyleSheet.create({
   deviceCard: { backgroundColor: '#1E1E2E', marginBottom: 12, padding: 16, borderRadius: 12 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   cardTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '600', marginLeft: 8 },
+  deviceCardHint: { color: '#4CAF50', fontSize: 12, marginTop: 8, fontWeight: '500' },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   infoLabel: { color: '#888', fontSize: 13 },
   infoValue: { color: '#DDD', fontSize: 13, fontWeight: '500' },
