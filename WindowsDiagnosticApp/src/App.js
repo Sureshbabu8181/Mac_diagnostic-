@@ -25,15 +25,12 @@ const getStatusColor = (pct) => pct >= 80 ? '#f85149' : pct >= 60 ? '#d29922' : 
 function Sidebar({ activePage, onNavigate }) {
   const pages = [
     { id: 'dashboard', icon: '📊', label: 'Dashboard' },
-    { id: 'hardware', icon: '🖥️', label: 'Hardware' },
+    { id: 'hwtests', icon: '🧪', label: 'Hardware Tests' },
+    { id: 'hardware', icon: '🖥️', label: 'Hardware Info' },
     { id: 'cpu', icon: '⚡', label: 'CPU' },
-    { id: 'memory', icon: '🧠', label: 'Memory' },
-    { id: 'disk', icon: '💾', label: 'Disk' },
-    { id: 'network', icon: '🌐', label: 'Network' },
-    { id: 'gpu', icon: '🎮', label: 'GPU' },
-    { id: 'battery', icon: '🔋', label: 'Battery' },
     { id: 'drivers', icon: '🔧', label: 'Drivers' },
     { id: 'updates', icon: '🔄', label: 'Software Updates' },
+    { id: 'tempclean', icon: '🧹', label: 'Temp Cleaner' },
     { id: 'processes', icon: '📋', label: 'Processes' },
     { id: 'reports', icon: '📄', label: 'Reports' },
   ];
@@ -96,6 +93,268 @@ function ProgressBar({ value, color }) {
   return (
     React.createElement('div', { style: styles.progressBg },
       React.createElement('div', { style: { ...styles.progressFill, width: `${value}%`, backgroundColor: color || '#3fb950' } })
+    )
+  );
+}
+
+// ─── Hardware Tests Page ──────────────────────────────────────────
+function HardwareTestsPage() {
+  const [displayInfo, setDisplayInfo] = useState(null);
+  const [audioDevices, setAudioDevices] = useState([]);
+  const [usbDevices, setUsbDevices] = useState([]);
+  const [printers, setPrinters] = useState([]);
+  const [cameras, setCameras] = useState([]);
+  const [bluetooth, setBluetooth] = useState([]);
+  const [speakerTest, setSpeakerTest] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      ipcRenderer.invoke('get-display-info'),
+      ipcRenderer.invoke('get-audio-devices'),
+      ipcRenderer.invoke('get-usb-devices'),
+      ipcRenderer.invoke('get-printers'),
+      ipcRenderer.invoke('get-camera-devices'),
+      ipcRenderer.invoke('get-bluetooth-devices'),
+    ]).then(([d, a, u, p, c, b]) => {
+      setDisplayInfo(d);
+      setAudioDevices(a);
+      setUsbDevices(u);
+      setPrinters(p);
+      setCameras(c);
+      setBluetooth(b);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const testSpeaker = async () => {
+    setSpeakerTest('testing');
+    const r = await ipcRenderer.invoke('test-speaker');
+    setSpeakerTest(r.success ? 'pass' : 'fail');
+    setTimeout(() => setSpeakerTest(null), 3000);
+  };
+
+  if (loading) return React.createElement('div', { style: styles.loading }, 'Loading hardware tests...');
+
+  return (
+    React.createElement('div', { style: styles.page },
+      React.createElement('h1', { style: styles.pageTitle }, 'Hardware Tests'),
+
+      // Display Test
+      React.createElement('div', { style: styles.card },
+        React.createElement('h2', { style: styles.cardTitle }, '🖥️ Display'),
+        React.createElement('div', { style: { display: 'flex', gap: 12, flexWrap: 'wrap' } },
+          React.createElement(StatCard, { label: 'Resolution', value: displayInfo?.width && displayInfo?.height ? `${displayInfo.width} x ${displayInfo.height}` : 'N/A', icon: '📐' }),
+          React.createElement(StatCard, { label: 'Refresh Rate', value: displayInfo?.refreshRate ? `${displayInfo.refreshRate} Hz` : 'N/A', icon: '🔄' }),
+        ),
+        React.createElement('div', { style: { marginTop: 12, display: 'flex', gap: 8 } },
+          ['#FF0000', '#00FF00', '#0000FF', '#FFFFFF', '#000000', '#FF8C00'].map((color) =>
+            React.createElement('div', {
+              key: color,
+              style: { width: 48, height: 48, borderRadius: 8, backgroundColor: color, border: '2px solid #30363d', cursor: 'pointer' },
+              title: `Click to test ${color}`,
+            })
+          )
+        ),
+      ),
+
+      // Speaker Test
+      React.createElement('div', { style: styles.card },
+        React.createElement('h2', { style: styles.cardTitle }, '🔊 Audio / Speaker'),
+        React.createElement('div', { style: styles.statsGrid },
+          audioDevices.length > 0 ? audioDevices.map((d, i) =>
+            React.createElement(StatCard, { key: i, label: 'Audio Device', value: d.Name || 'Unknown', icon: '🔊' })
+          ) : React.createElement('p', { style: { color: '#8b949e' } }, 'No audio devices detected'),
+        ),
+        React.createElement('button', {
+          style: {
+            ...styles.btn,
+            marginTop: 12,
+            backgroundColor: speakerTest === 'pass' ? '#3fb950' : speakerTest === 'fail' ? '#f85149' : '#238636',
+          },
+          onClick: testSpeaker,
+          disabled: speakerTest === 'testing',
+        }, speakerTest === 'testing' ? '🔊 Playing...' : speakerTest === 'pass' ? '✅ Sound OK' : speakerTest === 'fail' ? '❌ No Sound' : '🔊 Test Speaker'),
+      ),
+
+      // Camera Test
+      React.createElement('div', { style: styles.card },
+        React.createElement('h2', { style: styles.cardTitle }, '📷 Camera'),
+        cameras.length > 0 ?
+          React.createElement('div', { style: styles.statsGrid },
+            cameras.map((c, i) =>
+              React.createElement(StatCard, { key: i, label: c.Status || 'Detected', value: c.FriendlyName || 'Camera', icon: '📷' })
+            )
+          )
+        : React.createElement('p', { style: { color: '#8b949e' } }, 'No camera devices detected'),
+      ),
+
+      // USB Test
+      React.createElement('div', { style: styles.card },
+        React.createElement('h2', { style: styles.cardTitle }, '🔌 USB Devices'),
+        React.createElement(StatCard, { label: 'Connected', value: `${usbDevices.length} devices`, icon: '🔌' }),
+        usbDevices.length > 0 && React.createElement('div', { style: { marginTop: 8, fontSize: 12, color: '#8b949e', maxHeight: 100, overflow: 'auto' } },
+          usbDevices.slice(0, 10).map((d, i) =>
+            React.createElement('div', { key: i, style: { padding: '2px 0' } }, d)
+          )
+        ),
+      ),
+
+      // Printer Test
+      React.createElement('div', { style: styles.card },
+        React.createElement('h2', { style: styles.cardTitle }, '🖨️ Printers'),
+        printers.length > 0 ?
+          React.createElement('table', { style: styles.table },
+            React.createElement('thead', null,
+              React.createElement('tr', null,
+                React.createElement('th', { style: styles.th }, 'Name'),
+                React.createElement('th', { style: styles.th }, 'Status'),
+                React.createElement('th', { style: styles.th }, 'Default'),
+              )
+            ),
+            React.createElement('tbody', null,
+              printers.map((p, i) =>
+                React.createElement('tr', { key: i, style: i % 2 === 0 ? styles.trEven : {} },
+                  React.createElement('td', { style: styles.td }, p.name),
+                  React.createElement('td', { style: { ...styles.td, color: p.status === 'OK' ? '#3fb950' : '#d29922' } }, p.status),
+                  React.createElement('td', { style: styles.td }, p.isDefault ? '✅' : ''),
+                )
+              )
+            )
+          )
+        : React.createElement('p', { style: { color: '#8b949e' } }, 'No printers detected'),
+      ),
+
+      // Bluetooth Test
+      React.createElement('div', { style: styles.card },
+        React.createElement('h2', { style: styles.cardTitle }, '📶 Bluetooth'),
+        bluetooth.length > 0 ?
+          React.createElement('div', { style: styles.statsGrid },
+            bluetooth.map((b, i) =>
+              React.createElement(StatCard, { key: i, label: b.Status || 'Active', value: b.FriendlyName || 'Bluetooth', icon: '📶' })
+            )
+          )
+        : React.createElement('p', { style: { color: '#8b949e' } }, 'No Bluetooth devices detected'),
+      ),
+    )
+  );
+}
+
+// ─── Temp Cleaner Page ────────────────────────────────────────────
+function TempCleanerPage() {
+  const [files, setFiles] = useState([]);
+  const [totalSize, setTotalSize] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
+  const [result, setResult] = useState(null);
+  const [selected, setSelected] = useState(new Set());
+
+  const formatSize = (bytes) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const scanTemp = async () => {
+    setLoading(true);
+    setResult(null);
+    const r = await ipcRenderer.invoke('get-temp-files');
+    setFiles(r.files);
+    setTotalSize(r.totalSize);
+    setTotalCount(r.totalCount);
+    setSelected(new Set(r.files.map((_, i) => i)));
+    setLoading(false);
+  };
+
+  const cleanTemp = async () => {
+    setCleaning(true);
+    const r = await ipcRenderer.invoke('clean-temp-files');
+    setResult(r);
+    setCleaning(false);
+    scanTemp();
+  };
+
+  const toggleAll = () => {
+    if (selected.size === files.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(files.map((_, i) => i)));
+    }
+  };
+
+  return (
+    React.createElement('div', { style: styles.page },
+      React.createElement('h1', { style: styles.pageTitle }, '🧹 Temp File Cleaner'),
+
+      React.createElement('div', { style: { display: 'flex', gap: 12, marginBottom: 20 } },
+        React.createElement('button', { style: styles.btn, onClick: scanTemp, disabled: loading },
+          loading ? '🔄 Scanning...' : '🔍 Scan Temp Files'
+        ),
+        React.createElement('button', {
+          style: { ...styles.btn, backgroundColor: '#da3633' },
+          onClick: cleanTemp,
+          disabled: cleaning || files.length === 0,
+        }, cleaning ? '🧹 Cleaning...' : '🧹 Clean Selected'),
+      ),
+
+      result && React.createElement('div', {
+        style: {
+          ...styles.card,
+          borderColor: result.success ? '#3fb95080' : '#d2992280',
+          backgroundColor: result.success ? '#3fb95010' : '#d2992210',
+        }
+      },
+        React.createElement('p', { style: { color: result.success ? '#3fb950' : '#d29922', fontWeight: 600 } },
+          result.success ? `✅ Freed ${formatSize(result.freedBytes)}` : `⚠️ ${result.message}`
+        ),
+      ),
+
+      React.createElement('div', { style: styles.statsGrid },
+        React.createElement(StatCard, { label: 'Total Files', value: totalCount.toLocaleString(), icon: '📄' }),
+        React.createElement(StatCard, { label: 'Total Size', value: formatSize(totalSize), icon: '💾' }),
+        React.createElement(StatCard, { label: 'Selected', value: `${selected.size} files`, icon: '☑️' }),
+        React.createElement(StatCard, { label: 'Selected Size', value: formatSize(files.filter((_, i) => selected.has(i)).reduce((s, f) => s + f.size, 0)), icon: '📦' }),
+      ),
+
+      files.length > 0 && React.createElement('div', { style: styles.card },
+        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 } },
+          React.createElement('h2', { style: styles.cardTitle }, 'Temp Files'),
+          React.createElement('button', {
+            style: { ...styles.filterBtn, ...(selected.size === files.length ? styles.filterBtnActive : {}) },
+            onClick: toggleAll,
+          }, selected.size === files.length ? 'Deselect All' : 'Select All'),
+        ),
+        React.createElement('table', { style: styles.table },
+          React.createElement('thead', null,
+            React.createElement('tr', null,
+              React.createElement('th', { style: { ...styles.th, width: 40 } }, ''),
+              React.createElement('th', { style: styles.th }, 'File Path'),
+              React.createElement('th', { style: { ...styles.th, width: 80 } }, 'Size'),
+            )
+          ),
+          React.createElement('tbody', null,
+            files.slice(0, 100).map((f, i) =>
+              React.createElement('tr', { key: i, style: i % 2 === 0 ? styles.trEven : {} },
+                React.createElement('td', { style: styles.td },
+                  React.createElement('input', {
+                    type: 'checkbox',
+                    checked: selected.has(i),
+                    onChange: () => {
+                      const next = new Set(selected);
+                      next.has(i) ? next.delete(i) : next.add(i);
+                      setSelected(next);
+                    },
+                  })
+                ),
+                React.createElement('td', { style: { ...styles.td, fontSize: 11, color: '#8b949e', maxWidth: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, f.path),
+                React.createElement('td', { style: { ...styles.td, fontSize: 12 } }, formatSize(f.size)),
+              )
+            )
+          )
+        )
+      )
     )
   );
 }
@@ -516,10 +775,12 @@ function App() {
   const renderPage = () => {
     switch (page) {
       case 'dashboard': return React.createElement(Dashboard, { systemInfo });
+      case 'hwtests': return React.createElement(HardwareTestsPage);
       case 'hardware': return React.createElement(HardwarePage, { systemInfo, diskInfo, networkInfo, gpuInfo, batteryInfo });
       case 'cpu': return React.createElement(BenchmarkPage);
       case 'drivers': return React.createElement(DriversPage);
       case 'updates': return React.createElement(UpdatesPage, { systemInfo });
+      case 'tempclean': return React.createElement(TempCleanerPage);
       case 'processes': return React.createElement(ProcessesPage);
       case 'reports': return React.createElement(ReportsPage, { systemInfo, diskInfo });
       default: return React.createElement(Dashboard, { systemInfo });

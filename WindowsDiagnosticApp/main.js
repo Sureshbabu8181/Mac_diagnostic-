@@ -267,3 +267,194 @@ ipcMain.handle('open-windows-update', async () => {
   }
   return { success: true };
 });
+
+// ─── Temp File Cleaner ────────────────────────────────────────────
+ipcMain.handle('get-temp-files', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve({ files: [], totalSize: 0 }); return; }
+    const tempDirs = [
+      process.env.TEMP || 'C:\\Windows\\Temp',
+      `${process.env.USERPROFILE}\\AppData\\Local\\Temp`,
+      'C:\\Windows\\Temp',
+    ];
+    const uniqueDirs = [...new Set(tempDirs)];
+    let allFiles = [];
+    let totalSize = 0;
+    let done = 0;
+
+    uniqueDirs.forEach((dir) => {
+      const cmd = `powershell -Command "Get-ChildItem -Path '${dir}' -Recurse -File -ErrorAction SilentlyContinue | Select-Object FullName,Length,LastWriteTime | ConvertTo-Json"`;
+      exec(cmd, { maxBuffer: 10 * 1024 * 1024, timeout: 15000 }, (err, stdout) => {
+        try {
+          const data = JSON.parse(stdout);
+          const files = (Array.isArray(data) ? data : [data]).map(f => ({
+            path: f.FullName,
+            size: f.Length || 0,
+            modified: f.LastWriteTime,
+            dir: dir,
+          }));
+          allFiles = allFiles.concat(files);
+          totalSize += files.reduce((sum, f) => sum + f.size, 0);
+        } catch {}
+        done++;
+        if (done === uniqueDirs.length) {
+          allFiles.sort((a, b) => b.size - a.size);
+          resolve({ files: allFiles.slice(0, 500), totalSize, totalCount: allFiles.length });
+        }
+      });
+    });
+  });
+});
+
+ipcMain.handle('clean-temp-files', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve({ success: false, message: 'Windows only' }); return; }
+    const tempDirs = [
+      process.env.TEMP || 'C:\\Windows\\Temp',
+      `${process.env.USERPROFILE}\\AppData\\Local\\Temp`,
+      'C:\\Windows\\Temp',
+    ];
+    const uniqueDirs = [...new Set(tempDirs)];
+    let removedCount = 0;
+    let freedBytes = 0;
+    let done = 0;
+    let errors = [];
+
+    uniqueDirs.forEach((dir) => {
+      const cmd = `powershell -Command "Get-ChildItem -Path '${dir}' -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { try { $size = $_.Length; Remove-Item $_.FullName -Force -ErrorAction Stop; [PSCustomObject]@{Size=$size} } catch {} } | Measure-Object -Property Size -Sum"`;
+      exec(cmd, { maxBuffer: 10 * 1024 * 1024, timeout: 30000 }, (err, stdout) => {
+        if (err) { errors.push(err.message); }
+        try {
+          const match = stdout?.match(/Sum\s*:\s*(\d+)/);
+          if (match) freedBytes += parseInt(match[1]);
+        } catch {}
+        done++;
+        if (done === uniqueDirs.length) {
+          resolve({
+            success: errors.length === 0,
+            freedBytes,
+            message: errors.length > 0 ? `Cleaned with some errors: ${errors[0]}` : 'Temp files cleaned successfully',
+          });
+        }
+      });
+    });
+  });
+});
+
+// ─── Hardware Tests ───────────────────────────────────────────────
+ipcMain.handle('get-display-info', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve({ width: 0, height: 0, refreshRate: 0 }); return; }
+    const cmd = 'wmic path Win32_VideoController get CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate /format:csv';
+    exec(cmd, (err, stdout) => {
+      if (err) { resolve({ width: 0, height: 0, refreshRate: 0 }); return; }
+      const lines = stdout.trim().split('\n').filter(l => l.includes(','));
+      if (lines.length < 2) { resolve({ width: 0, height: 0, refreshRate: 0 }); return; }
+      const parts = lines[1].split(',');
+      resolve({
+        width: parseInt(parts[1]) || 0,
+        height: parseInt(parts[3]) || 0,
+        refreshRate: parseInt(parts[2]) || 0,
+      });
+    });
+  });
+});
+
+ipcMain.handle('test-speaker', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve({ success: false }); return; }
+    // Play a beep sound via PowerShell
+    const cmd = 'powershell -Command "[Console]::Beep(800, 500)"';
+    exec(cmd, { timeout: 5000 }, (err) => {
+      resolve({ success: !err });
+    });
+  });
+});
+
+ipcMain.handle('get-audio-devices', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve([]); return; }
+    const cmd = 'powershell -Command "Get-WmiObject Win32_SoundDevice | Select-Object Name,Status | ConvertTo-Json"';
+    exec(cmd, (err, stdout) => {
+      if (err) { resolve([]); return; }
+      try {
+        const data = JSON.parse(stdout);
+        resolve(Array.isArray(data) ? data : [data]);
+      } catch { resolve([]); }
+    });
+  });
+});
+
+ipcMain.handle('get-usb-devices', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve([]); return; }
+    const cmd = 'wmic path Win32_USBControllerDevice get Dependent /format:csv';
+    exec(cmd, { maxBuffer: 1024 * 1024 }, (err, stdout) => {
+      if (err) { resolve([]); return; }
+      const lines = stdout.trim().split('\n').filter(l => l.includes('DeviceID'));
+      const devices = lines.slice(0, 30).map(line => {
+        const match = line.match(/DeviceID="([^"]+)"/);
+        return match ? match[1] : null;
+      }).filter(Boolean);
+      resolve(devices);
+    });
+  });
+});
+
+ipcMain.handle('get-printers', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve([]); return; }
+    const cmd = 'wmic printer get Name,Status,Default /format:csv';
+    exec(cmd, (err, stdout) => {
+      if (err) { resolve([]); return; }
+      const lines = stdout.trim().split('\n').filter(l => l.includes(','));
+      const printers = lines.slice(1).map(line => {
+        const parts = line.split(',');
+        return {
+          name: (parts[3] || '').trim(),
+          status: (parts[4] || '').trim(),
+          isDefault: (parts[1] || '').trim() === 'TRUE',
+        };
+      }).filter(p => p.name);
+      resolve(printers);
+    });
+  });
+});
+
+ipcMain.handle('get-keyboard-layout', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve('Unknown'); return; }
+    const cmd = 'powershell -Command "(Get-Culture).KeyboardLayoutId"';
+    exec(cmd, (err, stdout) => {
+      resolve(stdout?.trim() || 'Unknown');
+    });
+  });
+});
+
+ipcMain.handle('get-bluetooth-devices', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve([]); return; }
+    const cmd = 'powershell -Command "Get-PnpDevice -Class Bluetooth | Select-Object FriendlyName,Status | ConvertTo-Json"';
+    exec(cmd, { maxBuffer: 1024 * 1024 }, (err, stdout) => {
+      if (err) { resolve([]); return; }
+      try {
+        const data = JSON.parse(stdout);
+        resolve(Array.isArray(data) ? data : [data]);
+      } catch { resolve([]); }
+    });
+  });
+});
+
+ipcMain.handle('get-camera-devices', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve([]); return; }
+    const cmd = 'powershell -Command "Get-PnpDevice -Class Camera | Select-Object FriendlyName,Status | ConvertTo-Json"';
+    exec(cmd, { maxBuffer: 1024 * 1024 }, (err, stdout) => {
+      if (err) { resolve([]); return; }
+      try {
+        const data = JSON.parse(stdout);
+        resolve(Array.isArray(data) ? data : [data]);
+      } catch { resolve([]); }
+    });
+  });
+});
