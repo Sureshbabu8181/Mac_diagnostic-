@@ -1,0 +1,43 @@
+{
+  "name": "one-diagnose-windows",
+  "version": "1.0.0",
+  "description": "One Diagnose - Windows Hardware Diagnostic Tool",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "build:portable": "electron-builder --win portable",
+    "dev": "concurrently \"react-scripts start\" \"wait-on http://localhost:3000 && electron .\"",
+    "build:react": "react-scripts build"
+  },
+  "build": {
+    "appId": "com.onediagnose.windows",
+    "productName": "One Diagnose",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": ["nsis", "portable"],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "recharts": "^2.15.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "react-scripts": "^5.0.1",
+    "concurrently": "^9.1.0",
+    "wait-on": "^8.0.1",
+    "typescript": "^5.6.3",
+    "@types/react": "^18.3.12"
+  }
+}
