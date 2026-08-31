@@ -32,6 +32,8 @@ function Sidebar({ activePage, onNavigate }) {
     { id: 'network', icon: '🌐', label: 'Network' },
     { id: 'gpu', icon: '🎮', label: 'GPU' },
     { id: 'battery', icon: '🔋', label: 'Battery' },
+    { id: 'drivers', icon: '🔧', label: 'Drivers' },
+    { id: 'updates', icon: '🔄', label: 'Software Updates' },
     { id: 'processes', icon: '📋', label: 'Processes' },
     { id: 'reports', icon: '📄', label: 'Reports' },
   ];
@@ -58,9 +60,7 @@ function Sidebar({ activePage, onNavigate }) {
 
 function Dashboard({ systemInfo }) {
   if (!systemInfo) return React.createElement('div', { style: styles.loading }, 'Loading...');
-
   const memUsedPct = Math.round(((systemInfo.totalMemory - systemInfo.freeMemory) / systemInfo.totalMemory) * 100);
-
   return (
     React.createElement('div', { style: styles.page },
       React.createElement('h1', { style: styles.pageTitle }, 'System Overview'),
@@ -100,7 +100,7 @@ function ProgressBar({ value, color }) {
   );
 }
 
-// ─── Pages ────────────────────────────────────────────────────────
+// ─── Hardware Page ────────────────────────────────────────────────
 function HardwarePage({ systemInfo, diskInfo, networkInfo, gpuInfo, batteryInfo }) {
   return (
     React.createElement('div', { style: styles.page },
@@ -156,14 +156,264 @@ function HardwarePage({ systemInfo, diskInfo, networkInfo, gpuInfo, batteryInfo 
   );
 }
 
+// ─── Drivers Page ─────────────────────────────────────────────────
+function DriversPage() {
+  const [drivers, setDrivers] = useState([]);
+  const [problemDevices, setProblemDevices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [filter, setFilter] = useState('all');
+
+  useEffect(() => { loadDrivers(); }, []);
+
+  const loadDrivers = async () => {
+    setLoading(true);
+    try {
+      const [d, p] = await Promise.all([
+        ipcRenderer.invoke('get-drivers'),
+        ipcRenderer.invoke('get-devices-with-drivers'),
+      ]);
+      setDrivers(d);
+      setProblemDevices(p);
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  const scanForUpdates = async () => {
+    setScanning(true);
+    await loadDrivers();
+    setScanning(false);
+  };
+
+  const openDeviceManager = () => ipcRenderer.invoke('open-device-manager');
+
+  const filteredDrivers = filter === 'problem'
+    ? drivers.filter(d => d.state !== 'Running')
+    : drivers;
+
+  const runningCount = drivers.filter(d => d.state === 'Running').length;
+  const stoppedCount = drivers.filter(d => d.state === 'Stopped').length;
+
+  return (
+    React.createElement('div', { style: styles.page },
+      React.createElement('h1', { style: styles.pageTitle }, 'Driver Management'),
+
+      React.createElement('div', { style: { display: 'flex', gap: 12, marginBottom: 20 } },
+        React.createElement('button', { style: styles.btn, onClick: scanForUpdates, disabled: scanning },
+          scanning ? '🔄 Scanning...' : '🔍 Scan Drivers'
+        ),
+        React.createElement('button', { style: { ...styles.btn, backgroundColor: '#1f6feb' }, onClick: openDeviceManager },
+          '⚙️ Open Device Manager'
+        ),
+      ),
+
+      React.createElement('div', { style: styles.statsGrid },
+        React.createElement(StatCard, { label: 'Total Drivers', value: drivers.length, icon: '📦' }),
+        React.createElement(StatCard, { label: 'Running', value: runningCount, icon: '✅' }),
+        React.createElement(StatCard, { label: 'Stopped', value: stoppedCount, icon: '⛔' }),
+        React.createElement(StatCard, { label: 'Problem Devices', value: problemDevices.length, icon: '⚠️', color: problemDevices.length > 0 ? '#f85149' : '#3fb950' }),
+      ),
+
+      problemDevices.length > 0 && React.createElement('div', { style: { ...styles.card, borderColor: '#f8514980' } },
+        React.createElement('h2', { style: { ...styles.cardTitle, color: '#f85149' } }, '⚠️ Devices with Issues'),
+        React.createElement('table', { style: styles.table },
+          React.createElement('thead', null,
+            React.createElement('tr', null,
+              React.createElement('th', { style: styles.th }, 'Device'),
+              React.createElement('th', { style: styles.th }, 'Manufacturer'),
+              React.createElement('th', { style: styles.th }, 'Error Code'),
+            )
+          ),
+          React.createElement('tbody', null,
+            problemDevices.map((d, i) =>
+              React.createElement('tr', { key: i, style: i % 2 === 0 ? styles.trEven : {} },
+                React.createElement('td', { style: styles.td }, d.name),
+                React.createElement('td', { style: styles.td }, d.manufacturer),
+                React.createElement('td', { style: { ...styles.td, color: '#f85149', fontWeight: 600 } }, `Error ${d.errorCode}`),
+              )
+            )
+          )
+        )
+      ),
+
+      React.createElement('div', { style: styles.card },
+        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 } },
+          React.createElement('h2', { style: styles.cardTitle }, 'All Drivers'),
+          React.createElement('div', { style: { display: 'flex', gap: 8 } },
+            ['all', 'running', 'stopped'].map(f =>
+              React.createElement('button', {
+                key: f,
+                style: { ...styles.filterBtn, ...(filter === f ? styles.filterBtnActive : {}) },
+                onClick: () => setFilter(f),
+              }, f.charAt(0).toUpperCase() + f.slice(1))
+            )
+          )
+        ),
+        loading ? React.createElement('div', { style: styles.loading }, 'Loading drivers...') :
+        React.createElement('table', { style: styles.table },
+          React.createElement('thead', null,
+            React.createElement('tr', null,
+              React.createElement('th', { style: styles.th }, 'Name'),
+              React.createElement('th', { style: styles.th }, 'Display Name'),
+              React.createElement('th', { style: styles.th }, 'State'),
+            )
+          ),
+          React.createElement('tbody', null,
+            filteredDrivers.slice(0, 100).map((d, i) =>
+              React.createElement('tr', { key: i, style: i % 2 === 0 ? styles.trEven : {} },
+                React.createElement('td', { style: styles.td }, d.name),
+                React.createElement('td', { style: styles.td }, d.displayName),
+                React.createElement('td', {
+                  style: {
+                    ...styles.td,
+                    color: d.state === 'Running' ? '#3fb950' : d.state === 'Stopped' ? '#f85149' : '#d29922',
+                    fontWeight: 600,
+                  }
+                }, d.state),
+              )
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+// ─── Software Updates Page ────────────────────────────────────────
+function UpdatesPage({ systemInfo }) {
+  const [checking, setChecking] = useState(false);
+  const [lastCheck, setLastCheck] = useState(null);
+  const [updates, setUpdates] = useState([]);
+  const [installing, setInstalling] = useState(false);
+
+  const checkUpdates = async () => {
+    setChecking(true);
+    try {
+      const result = await ipcRenderer.invoke('install-windows-updates');
+      setLastCheck(new Date().toLocaleString());
+      if (result.success) {
+        setUpdates([{ name: 'Windows Update', status: 'Checked', message: result.message }]);
+      } else {
+        setUpdates([{ name: 'Windows Update', status: 'Error', message: result.message }]);
+      }
+    } catch (e) {
+      setUpdates([{ name: 'Windows Update', status: 'Error', message: e.message }]);
+    }
+    setChecking(false);
+  };
+
+  const openWindowsUpdate = () => ipcRenderer.invoke('open-windows-update');
+
+  return (
+    React.createElement('div', { style: styles.page },
+      React.createElement('h1', { style: styles.pageTitle }, 'Software Updates'),
+
+      React.createElement('div', { style: { display: 'flex', gap: 12, marginBottom: 20 } },
+        React.createElement('button', {
+          style: styles.btn,
+          onClick: checkUpdates,
+          disabled: checking || installing,
+        }, checking ? '🔄 Checking...' : '🔍 Check for Updates'),
+        React.createElement('button', {
+          style: { ...styles.btn, backgroundColor: '#1f6feb' },
+          onClick: openWindowsUpdate,
+        }, '⚙️ Open Windows Update'),
+      ),
+
+      systemInfo && React.createElement('div', { style: styles.statsGrid },
+        React.createElement(StatCard, { label: 'OS', value: systemInfo.osVersion, icon: '🪟' }),
+        React.createElement(StatCard, { label: 'Architecture', value: systemInfo.arch, icon: '🔧' }),
+        React.createElement(StatCard, { label: 'Last Check', value: lastCheck || 'Never', icon: '🕐' }),
+        React.createElement(StatCard, { label: 'Uptime', value: formatUptime(systemInfo.uptime), icon: '⏱️' }),
+      ),
+
+      React.createElement('div', { style: styles.card },
+        React.createElement('h2', { style: styles.cardTitle }, '🔄 Update Status'),
+        updates.length === 0 ?
+          React.createElement('div', { style: { textAlign: 'center', padding: 40, color: '#8b949e' } },
+            React.createElement('p', { style: { fontSize: 48, marginBottom: 12 } }, '🔄'),
+            React.createElement('p', null, 'Click "Check for Updates" to scan for available software updates'),
+          )
+        :
+        React.createElement('table', { style: styles.table },
+          React.createElement('thead', null,
+            React.createElement('tr', null,
+              React.createElement('th', { style: styles.th }, 'Component'),
+              React.createElement('th', { style: styles.th }, 'Status'),
+              React.createElement('th', { style: styles.th }, 'Details'),
+            )
+          ),
+          React.createElement('tbody', null,
+            updates.map((u, i) =>
+              React.createElement('tr', { key: i, style: i % 2 === 0 ? styles.trEven : {} },
+                React.createElement('td', { style: styles.td }, u.name),
+                React.createElement('td', {
+                  style: {
+                    ...styles.td,
+                    color: u.status === 'Checked' ? '#3fb950' : u.status === 'Error' ? '#f85149' : '#d29922',
+                    fontWeight: 600,
+                  }
+                }, u.status),
+                React.createElement('td', { style: { ...styles.td, fontSize: 11, color: '#8b949e', maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, u.message),
+              )
+            )
+          )
+        )
+      ),
+
+      React.createElement('div', { style: styles.card },
+        React.createElement('h2', { style: styles.cardTitle }, '💡 Tips'),
+        React.createElement('ul', { style: { paddingLeft: 20, lineHeight: 2, color: '#8b949e' } },
+          React.createElement('li', null, 'Keep Windows updated for the latest security patches'),
+          React.createElement('li', null, 'GPU drivers should be updated from the manufacturer (NVIDIA/AMD/Intel)'),
+          React.createElement('li', null, 'Use Device Manager to update individual driver issues'),
+          React.createElement('li', null, 'Restart your PC after major driver updates'),
+        )
+      )
+    )
+  );
+}
+
+// ─── Benchmark Page ───────────────────────────────────────────────
+function BenchmarkPage() {
+  const [result, setResult] = useState(null);
+  const [running, setRunning] = useState(false);
+  const runBenchmark = async () => {
+    setRunning(true);
+    const r = await ipcRenderer.invoke('run-cpu-benchmark');
+    setResult(r);
+    setRunning(false);
+  };
+  return (
+    React.createElement('div', { style: styles.page },
+      React.createElement('h1', { style: styles.pageTitle }, 'CPU Benchmark'),
+      React.createElement('div', { style: styles.card },
+        React.createElement('p', { style: { marginBottom: 16 } }, 'Run a CPU benchmark to test processing performance.'),
+        React.createElement('button', {
+          style: { ...styles.btn, ...(running ? styles.btnDisabled : {}) },
+          onClick: runBenchmark,
+          disabled: running,
+        }, running ? 'Running...' : 'Start Benchmark'),
+        result && React.createElement('div', { style: { marginTop: 20 } },
+          React.createElement('p', null, `Time: ${result.elapsed}ms`),
+          React.createElement('p', null, `Score: ${result.score}K ops/sec`),
+          React.createElement(ProgressBar, {
+            value: Math.min(result.score / 5, 100),
+            color: result.score > 300 ? '#3fb950' : result.score > 100 ? '#d29922' : '#f85149',
+          }),
+        )
+      )
+    )
+  );
+}
+
+// ─── Processes Page ───────────────────────────────────────────────
 function ProcessesPage() {
   const [procs, setProcs] = useState([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     ipcRenderer.invoke('get-process-list').then(setProcs).finally(() => setLoading(false));
   }, []);
-
   return (
     React.createElement('div', { style: styles.page },
       React.createElement('h1', { style: styles.pageTitle }, 'Running Processes'),
@@ -190,40 +440,7 @@ function ProcessesPage() {
   );
 }
 
-function BenchmarkPage() {
-  const [result, setResult] = useState(null);
-  const [running, setRunning] = useState(false);
-
-  const runBenchmark = async () => {
-    setRunning(true);
-    const r = await ipcRenderer.invoke('run-cpu-benchmark');
-    setResult(r);
-    setRunning(false);
-  };
-
-  return (
-    React.createElement('div', { style: styles.page },
-      React.createElement('h1', { style: styles.pageTitle }, 'CPU Benchmark'),
-      React.createElement('div', { style: styles.card },
-        React.createElement('p', { style: { marginBottom: 16 } }, 'Run a CPU benchmark to test processing performance.'),
-        React.createElement('button', {
-          style: { ...styles.btn, ...(running ? styles.btnDisabled : {}) },
-          onClick: runBenchmark,
-          disabled: running,
-        }, running ? 'Running...' : 'Start Benchmark'),
-        result && React.createElement('div', { style: { marginTop: 20 } },
-          React.createElement('p', null, `Time: ${result.elapsed}ms`),
-          React.createElement('p', null, `Score: ${result.score}K ops/sec`),
-          React.createElement(ProgressBar, {
-            value: Math.min(result.score / 5, 100),
-            color: result.score > 300 ? '#3fb950' : result.score > 100 ? '#d29922' : '#f85149',
-          }),
-        )
-      )
-    )
-  );
-}
-
+// ─── Reports Page ─────────────────────────────────────────────────
 function ReportsPage({ systemInfo, diskInfo }) {
   const generateReport = () => {
     if (!systemInfo) return '';
@@ -254,7 +471,6 @@ DISK
 ${diskInfo?.map(d => `  ${d.mount}: ${formatBytes(d.total - d.free)} / ${formatBytes(d.total)}`).join('\n') || '  No disk info'}
     `.trim();
   };
-
   const downloadReport = () => {
     const report = generateReport();
     const blob = new Blob([report], { type: 'text/plain' });
@@ -265,7 +481,6 @@ ${diskInfo?.map(d => `  ${d.mount}: ${formatBytes(d.total - d.free)} / ${formatB
     a.click();
     URL.revokeObjectURL(url);
   };
-
   return (
     React.createElement('div', { style: styles.page },
       React.createElement('h1', { style: styles.pageTitle }, 'Reports'),
@@ -303,6 +518,8 @@ function App() {
       case 'dashboard': return React.createElement(Dashboard, { systemInfo });
       case 'hardware': return React.createElement(HardwarePage, { systemInfo, diskInfo, networkInfo, gpuInfo, batteryInfo });
       case 'cpu': return React.createElement(BenchmarkPage);
+      case 'drivers': return React.createElement(DriversPage);
+      case 'updates': return React.createElement(UpdatesPage, { systemInfo });
       case 'processes': return React.createElement(ProcessesPage);
       case 'reports': return React.createElement(ReportsPage, { systemInfo, diskInfo });
       default: return React.createElement(Dashboard, { systemInfo });
@@ -323,6 +540,7 @@ const styles = {
   sidebar: {
     width: 220, backgroundColor: '#161b22', borderRight: '1px solid #21262d',
     display: 'flex', flexDirection: 'column', paddingTop: 12, flexShrink: 0,
+    overflowY: 'auto',
   },
   logo: { display: 'flex', alignItems: 'center', padding: '12px 16px', marginBottom: 8, gap: 10 },
   logoIcon: {
@@ -335,13 +553,12 @@ const styles = {
     display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
     border: 'none', background: 'none', color: '#8b949e', fontSize: 14,
     cursor: 'pointer', textAlign: 'left', width: '100%',
-    transition: 'background 0.15s',
   },
   navItemActive: { backgroundColor: '#21262d', color: '#e6edf3', fontWeight: 600 },
   main: { flex: 1, overflow: 'auto', backgroundColor: '#0d1117' },
   page: { padding: 24 },
   pageTitle: { fontSize: 24, fontWeight: 700, marginBottom: 20, color: '#e6edf3' },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12, marginBottom: 20 },
   statCard: {
     backgroundColor: '#161b22', border: '1px solid #21262d', borderRadius: 8,
     padding: 16, display: 'flex', alignItems: 'center', gap: 12,
@@ -361,6 +578,11 @@ const styles = {
     borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer',
   },
   btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
+  filterBtn: {
+    backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d',
+    padding: '6px 14px', borderRadius: 6, fontSize: 12, cursor: 'pointer',
+  },
+  filterBtnActive: { backgroundColor: '#1f6feb', color: '#FFF', borderColor: '#1f6feb' },
   loading: { padding: 40, textAlign: 'center', color: '#8b949e' },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: { textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #21262d', color: '#8b949e', fontSize: 12 },

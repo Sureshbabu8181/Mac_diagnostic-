@@ -161,3 +161,109 @@ ipcMain.handle('get-gpu-info', async () => {
     }
   });
 });
+
+// ─── Driver Detection ─────────────────────────────────────────────
+ipcMain.handle('get-drivers', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve([]); return; }
+    const cmd = 'wmic sysdriver get Name,DisplayName,State,PathName /format:csv';
+    exec(cmd, { maxBuffer: 1024 * 1024 }, (err, stdout) => {
+      if (err) { resolve([]); return; }
+      const lines = stdout.trim().split('\n').filter(l => l.includes(','));
+      const drivers = lines.slice(1).map(line => {
+        const parts = line.split(',');
+        return {
+          name: (parts[3] || '').trim(),
+          displayName: (parts[2] || '').trim(),
+          state: (parts[4] || '').trim(),
+          path: (parts[5] || '').trim(),
+        };
+      }).filter(d => d.name && d.displayName);
+      resolve(drivers);
+    });
+  });
+});
+
+ipcMain.handle('get-driver-updates', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve([]); return; }
+    // Use pnputil to list devices with out-of-date drivers
+    const cmd = 'pnputil /enum-devices /problem';
+    exec(cmd, { maxBuffer: 1024 * 1024 }, (err, stdout) => {
+      if (err) { resolve([]); return; }
+      const devices = [];
+      const blocks = stdout.split(/Instance ID/i);
+      for (const block of blocks.slice(1)) {
+        const instanceMatch = block.match(/:\s*(.+)/);
+        const problemMatch = block.match(/Problem\s*:\s*(0x\w+)/i);
+        const statusMatch = block.match(/Status\s*:\s*(.+)/i);
+        if (instanceMatch) {
+          devices.push({
+            instanceId: instanceMatch[1].trim(),
+            problem: problemMatch ? problemMatch[1].trim() : 'Unknown',
+            status: statusMatch ? statusMatch[1].trim() : 'Unknown',
+          });
+        }
+      }
+      resolve(devices);
+    });
+  });
+});
+
+ipcMain.handle('get-devices-with-drivers', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve([]); return; }
+    const cmd = 'wmic path Win32_PnPEntity where "ConfigManagerErrorCode!=0" get DeviceID,Name,Manufacturer,Service,ConfigManagerErrorCode /format:csv';
+    exec(cmd, { maxBuffer: 1024 * 1024 }, (err, stdout) => {
+      if (err) { resolve([]); return; }
+      const lines = stdout.trim().split('\n').filter(l => l.includes(','));
+      const devices = lines.slice(1).map(line => {
+        const parts = line.split(',');
+        return {
+          deviceId: (parts[2] || '').trim(),
+          name: (parts[3] || '').trim(),
+          manufacturer: (parts[4] || '').trim(),
+          service: (parts[5] || '').trim(),
+          errorCode: parseInt(parts[1]) || 0,
+        };
+      }).filter(d => d.name);
+      resolve(devices);
+    });
+  });
+});
+
+ipcMain.handle('update-driver', async (_, deviceId) => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve({ success: false, message: 'Windows only' }); return; }
+    const cmd = `pnputil /scan-devices`;
+    exec(cmd, { timeout: 30000 }, (err, stdout, stderr) => {
+      if (err) { resolve({ success: false, message: err.message }); return; }
+      resolve({ success: true, message: stdout || 'Driver scan completed' });
+    });
+  });
+});
+
+ipcMain.handle('install-windows-updates', async () => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') { resolve({ success: false }); return; }
+    const cmd = 'powershell -Command "Get-WindowsUpdate | Install-WindowsUpdate -AcceptAll -AutoReboot"';
+    exec(cmd, { timeout: 60000 }, (err, stdout) => {
+      if (err) { resolve({ success: false, message: err.message }); return; }
+      resolve({ success: true, message: stdout || 'Update check completed' });
+    });
+  });
+});
+
+ipcMain.handle('open-device-manager', async () => {
+  if (process.platform === 'win32') {
+    exec('devmgmt.msc');
+  }
+  return { success: true };
+});
+
+ipcMain.handle('open-windows-update', async () => {
+  if (process.platform === 'win32') {
+    exec('ms-settings:windowsupdate');
+  }
+  return { success: true };
+});
