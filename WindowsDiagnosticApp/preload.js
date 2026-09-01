@@ -1,0 +1,27 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('api', {
+  getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
+  getDiskInfo: () => ipcRenderer.invoke('get-disk-info'),
+  getNetworkInfo: () => ipcRenderer.invoke('get-network-info'),
+  getGpuInfo: () => ipcRenderer.invoke('get-gpu-info'),
+  getBatteryInfo: () => ipcRenderer.invoke('get-battery-info'),
+  getDrivers: () => ipcRenderer.invoke('get-drivers'),
+  getDevicesWithDrivers: () => ipcRenderer.invoke('get-devices-with-drivers'),
+  updateDriver: (id) => ipcRenderer.invoke('update-driver', id),
+  openDeviceManager: () => ipcRenderer.invoke('open-device-manager'),
+  openWindowsUpdate: () => ipcRenderer.invoke('open-windows-update'),
+  installWindowsUpdates: () => ipcRenderer.invoke('install-windows-updates'),
+  runCpuBenchmark: () => ipcRenderer.invoke('run-cpu-benchmark'),
+  getProcessList: () => ipcRenderer.invoke('get-process-list'),
+  getDisplayInfo: () => ipcRenderer.invoke('get-display-info'),
+  testSpeaker: () => ipcRenderer.invoke('test-speaker'),
+  getAudioDevices: () => ipcRenderer.invoke('get-audio-devices'),
+  getUsbDevices: () => ipcRenderer.invoke('get-usb-devices'),
+  getPrinters: () => ipcRenderer.invoke('get-printers'),
+  getCameraDevices: () => ipcRenderer.invoke('get-camera-devices'),
+  getBluetoothDevices: () => ipcRenderer.invoke('get-bluetooth-devices'),
+  getKeyboardLayout: () => ipcRenderer.invoke('get-keyboard-layout'),
+  getTempFiles: () => ipcRenderer.invoke('get-temp-files'),
+  cleanTempFiles: () => ipcRenderer.invoke('clean-temp-files'),
+});
