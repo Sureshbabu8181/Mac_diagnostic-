@@ -43,8 +43,8 @@ cat > "$BUNDLE/Contents/Info.plist" <<PLIST
     <key>CFBundleIconFile</key><string>MacDiagnosticApp</string>
     <key>CFBundleIdentifier</key><string>$IDENTIFIER</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-    <key>CFBundleName</key><string>MAC Diagnostic Center</string>
-    <key>CFBundleDisplayName</key><string>MAC Diagnostic Center</string>
+    <key>CFBundleName</key><string>One Diagnose</string>
+    <key>CFBundleDisplayName</key><string>One Diagnose</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
     <key>CFBundleVersion</key><string>$VERSION</string>
@@ -70,13 +70,15 @@ fi
 echo "== Staging DMG contents =="
 mkdir -p "$STAGE"
 cp -R "$BUNDLE" "$STAGE/"
+cp "Scripts/allow-open.sh" "$STAGE/"
+chmod +x "$STAGE/allow-open.sh"
 ln -s /Applications "$STAGE/Applications"
 
 echo "== Building .dmg =="
-DMG="$DIST_DIR/$APP_NAME-$VERSION.dmg"
+DMG="$DIST_DIR/One-Diagnose-$VERSION.dmg"
 rm -f "$DMG"
 hdiutil create \
-    -volname "MAC Diagnostic Center" \
+    -volname "One Diagnose" \
     -srcfolder "$STAGE" \
     -ov -format UDZO \
     "$DMG"

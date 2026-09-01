@@ -41,3 +41,17 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 data/
+
+# Flutter
+FlutterDiagnosticApp/.flutter-plugins-dependencies
+FlutterDiagnosticApp/.flutter-plugins-dependencies (1)
+FlutterDiagnosticApp/.dart_tool/
+FlutterDiagnosticApp/build/
+FlutterDiagnosticApp/pubspec.lock
+FlutterDiagnosticApp/.metadata
+
+# Swift build artifacts
+MacDiagnosticApp/.build/
+MacDiagnosticApp/build-artifacts/
+MacDiagnosticApp/dist/
+MacDiagnosticApp/Resources/AppIcon.iconset/
