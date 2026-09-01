@@ -7,6 +7,9 @@ const fs = require('fs');
 let mainWindow;
 
 function createWindow() {
+  const iconPath = path.join(__dirname, 'assets', 'icon.ico');
+  const hasIcon = fs.existsSync(iconPath);
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -19,7 +22,7 @@ function createWindow() {
     },
     titleBarStyle: 'hidden',
     backgroundColor: '#121212',
-    icon: path.join(__dirname, 'assets/icon.ico'),
+    ...(hasIcon ? { icon: iconPath } : {}),
   });
 
   mainWindow.loadFile(path.join(__dirname, 'public/index.html'));

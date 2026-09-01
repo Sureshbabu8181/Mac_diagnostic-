@@ -4,7 +4,7 @@
   "description": "One Diagnose - Windows Hardware Diagnostic Tool",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "npx electron .",
     "build": "electron-builder --win",
     "build:portable": "electron-builder --win portable"
   },
