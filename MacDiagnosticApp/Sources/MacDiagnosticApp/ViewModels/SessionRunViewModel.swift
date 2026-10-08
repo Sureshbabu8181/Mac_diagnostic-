@@ -60,6 +60,15 @@ final class SessionRunViewModel: ObservableObject, @unchecked Sendable {
         engine.finishManual(kind, status: status, summary: summaryFor(kind), notes: notes)
     }
 
+    /// Records an automated diagnostic result (e.g. from Stress Test or Monitor)
+    /// into the session without going through the standard runAutomated flow.
+    func recordAutomatedResult(_ result: DiagnosticResult) {
+        engine.adoptAutomated(result)
+        didSave = false
+        lastSaveMessage = nil
+        _ = finish()
+    }
+
     /// Runs exactly one diagnostic (individual test). Manual kinds go straight
     /// to their screen; automated kinds run and land on the result.
     func startSingle(_ kind: DiagnosticKind) async {

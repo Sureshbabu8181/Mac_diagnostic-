@@ -13,6 +13,8 @@ public enum DiagnosticKind: String, Codable, CaseIterable, Identifiable, Sendabl
     case memory
     case network
     case system
+    case stressTest
+    case monitor
 
     public var id: String { rawValue }
 
@@ -30,6 +32,8 @@ public enum DiagnosticKind: String, Codable, CaseIterable, Identifiable, Sendabl
         case .memory: "Memory"
         case .network: "Network"
         case .system: "System"
+        case .stressTest: "Stress Test"
+        case .monitor: "Monitor"
         }
     }
 

@@ -20,8 +20,16 @@ struct RootView: View {
                 .navigationDestination(for: Route.self) { route in
                     switch route {
                     case .singleTest(let kind):
-                        SessionRunFlowView(singleKind: kind) { result in
-                            homeRunner.adoptResult(result)
+                        if kind == .stressTest {
+                            StressTestContainer()
+                                .environmentObject(appModel)
+                        } else if kind == .monitor {
+                            MonitorContainer()
+                                .environmentObject(appModel)
+                        } else {
+                            SessionRunFlowView(singleKind: kind) { result in
+                                homeRunner.adoptResult(result)
+                            }
                         }
                     case .history:
                         HistoryView()

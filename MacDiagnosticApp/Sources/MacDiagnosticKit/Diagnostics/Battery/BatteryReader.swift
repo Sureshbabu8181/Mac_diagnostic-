@@ -64,10 +64,13 @@ public struct BatteryReader: Sendable {
                 readings.amperageMillis = amp
             }
 
-            if let temp = IOKitSupport.intProperty("Temperature", on: service), temp > 0, temp < 2000 {
-                readings.temperatureCelsius = Double(temp) / 10.0
-            } else if let avg = IOKitSupport.intProperty("AverageTemperature", on: service), avg > 0, avg < 2000 {
-                readings.temperatureCelsius = Double(avg) / 10.0
+            // AppleSmartBattery reports Temperature in centidegrees (e.g. 3063
+            // = 30.63°C); some firmware uses decidegrees — normalize by magnitude.
+            if let temp = IOKitSupport.intProperty("Temperature", on: service), temp > 0 {
+                let celsius = temp > 800 ? Double(temp) / 100.0 : Double(temp) / 10.0
+                if celsius > 0, celsius <= 100 {
+                    readings.temperatureCelsius = celsius
+                }
             }
             readings.externalConnected = IOKitSupport.boolProperty("ExternalConnected", on: service)
 

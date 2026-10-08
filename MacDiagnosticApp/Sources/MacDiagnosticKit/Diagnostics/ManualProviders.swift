@@ -76,6 +76,8 @@ public enum DefaultRegistry {
                 MemoryDiagnostic(),
                 NetworkDiagnostic(),
                 SystemDiagnostic(),
+                StressTestDiagnostic(),
+                MonitorDiagnostic(),
             ],
             manual: [
                 DisplayDiagnostic(),

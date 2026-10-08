@@ -504,6 +504,8 @@ struct ModuleCard: View {
         case .memory: "memorychip"
         case .network: "network"
         case .system: "gear"
+        case .stressTest: "flame.fill"
+        case .monitor: "chart.line.uptrend.xyaxis"
         }
     }
 }

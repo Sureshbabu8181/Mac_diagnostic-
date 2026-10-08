@@ -121,8 +121,8 @@ struct SelftestRunner {
         let output = AudioDeviceProbe.defaultOutput()
         check("audio output probe", output != nil && !(output?.name.isEmpty ?? true))
         let registry = DefaultRegistry.make()
-        check("registry covers all 12 kinds", DiagnosticKind.allCases.allSatisfy { kind in registry.all.contains { $0.kind == kind } })
-        check("registry counts", registry.automated.count == 6 && registry.manual.count == 6)
+        check("registry covers all \(DiagnosticKind.allCases.count) kinds", DiagnosticKind.allCases.allSatisfy { kind in registry.all.contains { $0.kind == kind } })
+        check("registry counts", registry.automated.count == 8 && registry.manual.count == 6)
 
         print("")
         print("REAL DIAGNOSTIC RESULTS")
@@ -130,7 +130,7 @@ struct SelftestRunner {
         await realEngine.runAutomated()
         for result in realEngine.session.results {
             print("  [\(result.status.displayName)] \(result.kind.displayName): \(result.summary)")
-            for metric in result.metrics.prefix(6) {
+            for metric in result.metrics.prefix(40) {
                 print("      \(metric.name): \(metric.value)")
             }
         }

@@ -100,6 +100,13 @@ public final class DiagnosticEngine: ObservableObject, @unchecked Sendable {
         recomputeOverall()
     }
 
+    /// Records an automated diagnostic result (e.g. Stress Test or Monitor)
+    /// that was run outside the standard runAutomated flow.
+    public func adoptAutomated(_ result: DiagnosticResult) {
+        upsert(result: result)
+        recomputeOverall()
+    }
+
     private func existingMetrics(for kind: DiagnosticKind) -> [DiagnosticMetric] {
         session.result(for: kind)?.metrics ?? []
     }
