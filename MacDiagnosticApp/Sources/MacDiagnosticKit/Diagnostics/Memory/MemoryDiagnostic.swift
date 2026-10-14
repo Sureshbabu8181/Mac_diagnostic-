@@ -6,7 +6,7 @@ public struct MemoryDiagnostic: AutomatedDiagnosticProvider {
     public let meta = DiagnosticMeta(
         kind: .memory,
         title: "Memory",
-        whyItMatters: "Reports installed RAM, usage, memory pressure and swap. A full hardware memory test requires Apple Diagnostic mode (reboot); this module only reads public statistics.",
+        whyItMatters: "Reports installed RAM, usage, memory pressure and swap. Statistics here are a documented proxy; the dedicated RAM Stress Test module performs the full multi-threaded pattern stress. A complete hardware memory test also requires Apple Diagnostic mode (reboot).",
         isManual: false
     )
 
@@ -39,7 +39,7 @@ public struct MemoryDiagnostic: AutomatedDiagnosticProvider {
         metrics.append(DiagnosticMetric(name: "Thermal State", value: thermal.displayName))
 
         var status: DiagnosticStatus = .pass
-        var summary = "Memory statistics collected. Note: a full hardware RAM test requires Apple Diagnostic mode (boot-time), not this application."
+        var summary = "Memory statistics collected (documented proxy — the RAM Stress Test module performs the full pattern stress; complete hardware coverage also needs Apple Diagnostic mode at boot)."
 
         if pressure == .high || pressure == .critical {
             status = .warning

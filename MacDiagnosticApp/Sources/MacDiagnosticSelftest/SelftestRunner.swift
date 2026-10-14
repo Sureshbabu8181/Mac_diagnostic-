@@ -29,6 +29,7 @@ struct SelftestRunner {
     }
 
     static func main() async {
+        setenv("MACDIAG_SELFTEST", "1", 1)
         print("MAC DIAGNOSTIC SELF-TEST")
         print("Battery assessment")
         let thresholds = BatteryThresholds()
@@ -103,7 +104,7 @@ struct SelftestRunner {
               text.contains("TEST COVERAGE & LIMITATIONS")
                   && text.contains("SMART / SSD health")
                   && text.contains("MANUAL REQUIRED"))
-        check("coverage limits list all four items", CoverageLimits.items.count == 4)
+        check("coverage limits list all five items", CoverageLimits.items.count == 5)
         if let mailto = ReportSender.mailtoURL(recipient: "tech@example.com",
                                                subject: ReportSender.emailSubject(for: session),
                                                body: text) {
@@ -253,12 +254,14 @@ struct SelftestRunner {
         check("audio output probe", output != nil && !(output?.name.isEmpty ?? true))
         let registry = DefaultRegistry.make()
         check("registry covers all \(DiagnosticKind.allCases.count) kinds", DiagnosticKind.allCases.allSatisfy { kind in registry.all.contains { $0.kind == kind } })
-        check("registry counts", registry.automated.count == 8 && registry.manual.count == 6)
+        check("registry counts", registry.automated.count == 10 && registry.manual.count == 6)
 
         print("")
         print("REAL DIAGNOSTIC RESULTS")
         let realEngine = DiagnosticEngine(registry: registry, device: info, technician: "selftest", appVersion: "t")
         await realEngine.runAutomated()
+        check("RAM stress test produced result", realEngine.session.result(for: .ramStress) != nil)
+        check("fan test produced result", realEngine.session.result(for: .fanTest) != nil)
         for result in realEngine.session.results {
             print("  [\(result.status.displayName)] \(result.kind.displayName): \(result.summary)")
             for metric in result.metrics.prefix(40) {

@@ -501,6 +501,8 @@ struct ModuleCard: View {
         case .network: "network"
         case .system: "gear"
         case .stressTest: "flame.fill"
+        case .ramStress: "memorychip"
+        case .fanTest: "fanblades.fill"
         case .monitor: "chart.line.uptrend.xyaxis"
         }
     }
