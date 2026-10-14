@@ -209,6 +209,10 @@ struct SelftestRunner {
               && matched[0].entryField == "entry.1111" && matched[0].value == "SELFTEST"
               && matched[1].entryField == "entry.2222" && matched[1].value == "PASS"
               && matched[2].entryField == "entry.3333" && matched[2].value == "full details")
+        let bothHTML = #"[1,"Report",null,0,[[11,null,1]],[2,"Summary",null,0,[[22,null,1]]]"#
+        let bothPairs = ReportSender.formEntries(in: bothHTML)
+        let bothMatched = ReportSender.matchFormFields(entries: bothPairs, fields: [(key: "summary", value: "full text")])
+        check("summary prefers exact Summary over Report", bothMatched.count == 1 && bothMatched[0].entryField == "entry.22")
         if let multiBody = ReportSender.formEncodedBody(fields: matched) {
             let s = String(data: multiBody, encoding: .utf8) ?? ""
             check("multi-column body pairs", s.contains("entry.1111=SELFTEST") && s.contains("entry.2222=PASS") && s.contains("&"))

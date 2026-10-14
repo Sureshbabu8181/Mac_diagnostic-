@@ -135,8 +135,8 @@ public enum ReportSender {
     }
 
     /// Maps canonical field keys onto a form's question titles (case- and
-    /// punctuation-insensitive contains match, with common aliases).
-    /// Unmatched questions are skipped; unmatched values are ignored.
+    /// punctuation-insensitive). Exact title matches win over contains-matches;
+    /// common aliases are supported. Unmatched values are ignored by the caller.
     public static func matchFormFields(
         entries: [(title: String, entry: String)],
         fields: [(key: String, value: String)]
@@ -154,15 +154,23 @@ public enum ReportSender {
             "storage": ["storage", "disk"],
             "serial": ["serial"],
         ]
+        func normalized(_ s: String) -> String {
+            s.lowercased().replacingOccurrences(of: ":", with: "").trimmingCharacters(in: .whitespaces)
+        }
         var result: [(String, String)] = []
         var used = Set<String>()
         for field in fields {
-            let keys = aliases[field.key] ?? [field.key]
-            if let match = entries.first(where: { entry in
-                !used.contains(entry.entry) && keys.contains { key in
-                    entry.title.lowercased().replacingOccurrences(of: ":", with: "").contains(key)
-                }
-            }) {
+            let keys = (aliases[field.key] ?? [field.key]).map(normalized)
+            var match: (title: String, entry: String)?
+            // 1) Exact title match, first alias wins ("Summary" beats "Report").
+            for key in keys where match == nil {
+                match = entries.first { !used.contains($0.entry) && normalized($0.title) == key }
+            }
+            // 2) Contains match.
+            for key in keys where match == nil {
+                match = entries.first { !used.contains($0.entry) && normalized($0.title).contains(key) }
+            }
+            if let match {
                 used.insert(match.entry)
                 result.append((match.entry, field.value))
             }
@@ -205,6 +213,16 @@ public enum ReportSender {
                     let summary = ReportBuilder(companyName: companyName, appVersion: session.appVersion,
                                                 technicianName: session.technicianName).textSummary(for: session)
                     fields = [(entries[0].entry, summary)]
+                } else {
+                    // Required text questions reject empty answers (HTTP 400).
+                    // Unmapped "Report"-style questions get the compact one-line
+                    // summary; any other unmapped question gets a placeholder.
+                    let mapped = Set(fields.map(\.entryField))
+                    let compact = compactSummary(sheetPayload(for: session, companyName: companyName))
+                    for entry in entries where !mapped.contains(entry.entry) {
+                        let title = entry.title.lowercased()
+                        fields.append((entry.entry, title.contains("report") || title.contains("detail") ? compact : "-"))
+                    }
                 }
             }
             guard let action = formActionURL(from: webhookURL),
