@@ -99,6 +99,11 @@ struct SelftestRunner {
         check("text summary contains serial + verdict",
               text.contains("SELFTEST") && text.uppercased().contains("OVERALL:"))
         check("text summary lists tests", text.contains("Battery:"))
+        check("text summary includes coverage limits",
+              text.contains("TEST COVERAGE & LIMITATIONS")
+                  && text.contains("SMART / SSD health")
+                  && text.contains("MANUAL REQUIRED"))
+        check("coverage limits list all four items", CoverageLimits.items.count == 4)
         if let mailto = ReportSender.mailtoURL(recipient: "tech@example.com",
                                                subject: ReportSender.emailSubject(for: session),
                                                body: text) {

@@ -231,6 +231,8 @@ struct ConsolidatedReportView: View {
 
                 BenchmarkScoreCard(score: BenchmarkScore.compute(for: session))
 
+                CoverageLimitsCard()
+
                 Divider()
 
                 ScrollView {

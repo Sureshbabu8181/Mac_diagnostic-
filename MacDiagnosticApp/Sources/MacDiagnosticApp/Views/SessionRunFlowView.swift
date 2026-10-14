@@ -158,6 +158,7 @@ struct SessionResultView: View {
                 if singleKind == nil {
                     summaryStrip
                     BenchmarkScoreCard(score: BenchmarkScore.compute(for: vm.engine.session))
+                    CoverageLimitsCard()
                 }
 
                 if singleKind == .battery {

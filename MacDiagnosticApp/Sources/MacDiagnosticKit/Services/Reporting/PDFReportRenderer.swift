@@ -76,6 +76,9 @@ public enum PDFReportRenderer {
         y -= 8
         y = section(ctx, at: y, title: "OVERALL RESULT", lines: [])
         draw(TextRun(string: session.overall.displayName, fontSize: 16, bold: true, color: verdictColor(session.overall.verdict)), at: CGPoint(x: 56, y: y), ctx: ctx)
+        y -= 30
+
+        y = section(ctx, at: y, title: "TEST COVERAGE & LIMITATIONS", lines: CoverageLimits.items.map { ($0.area, $0.detail) })
 
         ctx.endPDFPage()
         ctx.closePDF()
