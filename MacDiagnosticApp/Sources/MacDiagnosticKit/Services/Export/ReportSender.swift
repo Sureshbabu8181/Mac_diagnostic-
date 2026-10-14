@@ -143,10 +143,16 @@ public enum ReportSender {
 
     /// Opens the default mail client with the report prefilled.
     /// Returns false when no mail handler is configured.
+    /// The body is capped so the mailto: URL stays within client limits;
+    /// the full report is always available via "Save to Downloads".
     @MainActor
     public static func openEmailComposer(recipient: String, session: DiagnosticSession, companyName: String = "") async -> Bool {
-        let body = ReportBuilder(companyName: companyName, appVersion: session.appVersion, technicianName: session.technicianName)
+        var body = ReportBuilder(companyName: companyName, appVersion: session.appVersion, technicianName: session.technicianName)
             .textSummary(for: session)
+        if body.count > 16_000 {
+            body = String(body.prefix(16_000))
+                + "\n\n… (truncated — full report available via \"Save PDF / JSON / CSV to Downloads\")"
+        }
         guard let url = mailtoURL(recipient: recipient, subject: emailSubject(for: session), body: body) else {
             return false
         }

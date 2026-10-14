@@ -17,10 +17,10 @@ final class SessionRunViewModel: ObservableObject, @unchecked Sendable {
 
     @Published var phase: Phase = .preparing
     @Published var currentNotes = ""
-    @Published var sortExports: [URL] = []
     @Published private(set) var lastSaveMessage: String?
     @Published private(set) var didSave = false
     @Published private(set) var lastSendStatus: String?
+    @Published private(set) var lastExportMessage: String?
 
     /// Snapshot of opt-in report-delivery settings, copied from AppModel when
     /// the flow binds so sending never races settings changes.
@@ -192,13 +192,9 @@ final class SessionRunViewModel: ObservableObject, @unchecked Sendable {
         }
     }
 
-    func exportReport(to directory: URL, formats: Set<ReportFormat>, companyName: String = "") async {
-        let builder = ReportExporter()
-        do {
-            sortExports = try builder.export(engine.session, to: directory, formats: formats, companyName: companyName)
-        } catch {
-            AppLogger.shared.error("Export failed: \(error.localizedDescription)")
-        }
+    /// Saves PDF + JSON + CSV of this session straight into ~/Downloads.
+    func exportToDownloads(companyName: String = "") {
+        lastExportMessage = QuickExport.export(engine.session, companyName: companyName)
     }
 
     private func summaryFor(_ kind: DiagnosticKind) -> String {

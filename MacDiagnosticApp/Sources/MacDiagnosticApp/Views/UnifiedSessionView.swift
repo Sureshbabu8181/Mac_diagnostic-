@@ -7,6 +7,7 @@ import MacDiagnosticKit
 /// below that — each completed inline without leaving the page.
 struct UnifiedSessionView: View {
     @ObservedObject var vm: SessionRunViewModel
+    @EnvironmentObject private var appModel: AppModel
     @State private var expanded: DiagnosticKind?
 
     private var automatedKinds: [DiagnosticKind] { DiagnosticKind.allCases.filter { !$0.isManual } }
@@ -192,12 +193,8 @@ struct UnifiedSessionView: View {
                 .testActionButton()
                 .disabled(vm.didSave || !vm.remainingManual.isEmpty)
 
-                Button("Export PDF / JSON / CSV…") {
-                    let panel = NSOpenPanel()
-                    panel.canChooseDirectories = true
-                    panel.canChooseFiles = false
-                    guard panel.runModal() == .OK, let url = panel.url else { return }
-                    Task { await vm.exportReport(to: url, formats: [.pdf, .json, .csv]) }
+                Button("Save PDF / JSON / CSV to Downloads") {
+                    vm.exportToDownloads(companyName: appModel.settings.companyName)
                 }
                 .buttonStyle(.bordered)
                 .disabled(!vm.remainingManual.isEmpty)
@@ -206,6 +203,9 @@ struct UnifiedSessionView: View {
                     Text(message).font(.caption).foregroundStyle(.red)
                 } else if vm.didSave {
                     Text("Session saved to local history.").font(.caption).foregroundStyle(.green)
+                }
+                if let exportMessage = vm.lastExportMessage {
+                    Text(exportMessage).font(.caption).foregroundStyle(.green)
                 }
             }
 

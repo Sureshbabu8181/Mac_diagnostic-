@@ -49,9 +49,9 @@ struct HistoryView: View {
         .toolbar {
             ToolbarItemGroup {
                 Button("Compare", action: compareBattery)
-                Button("Export…") { exportSelected() }
-                Button("Export All CSV…") { exportAll() }
-                Button("Export All (CSV/PDF/JSON)…") { exportAllReports() }
+                Button("Save Selected to Downloads") { exportSelected() }
+                Button("Save All CSV to Downloads") { exportAll() }
+                Button("Save All Reports to Downloads") { exportAllReports() }
                 Button("Refresh") { reload() }
             }
         }
@@ -144,62 +144,17 @@ struct HistoryView: View {
 
     private func exportSelected() {
         guard let session = sessions.first(where: { $0.id == selectedID }) else { return }
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        let exporter = ReportExporter()
-        do {
-            let written = try exporter.export(session, to: url, formats: [.pdf, .json, .csv], companyName: appModel.settings.companyName)
-            exported = "Exported \(written.count) file(s) to \(url.path)"
-        } catch {
-            exported = error.localizedDescription
-        }
+        exported = QuickExport.export(session, companyName: appModel.settings.companyName)
     }
 
     private func exportAll() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        let data = ReportBuilder(companyName: appModel.settings.companyName).combinedCSV(sessions: sessions)
-        do {
-            let file = url.appendingPathComponent("mac-diagnostic-history-\(Int(Date().timeIntervalSince1970)).csv")
-            try data.write(to: file, atomically: true, encoding: .utf8)
-            exported = "Exported \(sessions.count) session(s) to \(file.path)"
-        } catch {
-            exported = error.localizedDescription
-        }
+        exported = QuickExport.exportCombinedCSV(sessions: sessions, companyName: appModel.settings.companyName)
     }
 
-    /// Exports every session as its own CSV, PDF and JSON ("API") file into the
-    /// chosen folder, plus a single combined fleet CSV.
+    /// Exports every session as its own CSV, PDF and JSON ("API") file into
+    /// ~/Downloads, plus a single combined fleet CSV.
     private func exportAllReports() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        let exporter = ReportExporter()
-        let builder = ReportBuilder(companyName: appModel.settings.companyName)
-        var count = 0
-        for session in sessions {
-            do {
-                let written = try exporter.export(session, to: url, formats: [.csv, .pdf, .json], companyName: appModel.settings.companyName)
-                count += written.count
-            } catch {
-                exported = error.localizedDescription
-                return
-            }
-        }
-        do {
-            let combined = url.appendingPathComponent("mac-diagnostic-history-all.csv")
-            try builder.combinedCSV(sessions: sessions).write(to: combined, atomically: true, encoding: .utf8)
-            count += 1
-        } catch {
-            exported = error.localizedDescription
-            return
-        }
-        exported = "Exported \(count) file(s) for \(sessions.count) session(s) to \(url.path)"
+        exported = QuickExport.exportAllSessions(sessions, companyName: appModel.settings.companyName)
     }
 
     private func reload() {

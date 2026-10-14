@@ -208,12 +208,8 @@ struct SessionResultView: View {
                         .disabled(vm.didSave)
                     }
 
-                    Button("Export PDF / JSON / CSV…") {
-                        let panel = NSOpenPanel()
-                        panel.canChooseDirectories = true
-                        panel.canChooseFiles = false
-                        guard panel.runModal() == .OK, let url = panel.url else { return }
-                        Task { await vm.exportReport(to: url, formats: [.pdf, .json, .csv], companyName: appModel.settings.companyName) }
+                    Button("Save PDF / JSON / CSV to Downloads") {
+                        vm.exportToDownloads(companyName: appModel.settings.companyName)
                     }
                     .buttonStyle(.bordered)
 
@@ -221,6 +217,9 @@ struct SessionResultView: View {
                         Text(message).font(.caption).foregroundStyle(.red)
                     } else if vm.didSave {
                         Text("Session saved to local history.").font(.caption).foregroundStyle(.green)
+                    }
+                    if let exportMessage = vm.lastExportMessage {
+                        Text(exportMessage).font(.caption).foregroundStyle(.green)
                     }
                 }
 

@@ -166,12 +166,8 @@ struct HomeView: View {
                 .buttonStyle(.bordered)
                 .disabled(runner.isRunningAll || runner.didSave)
 
-                Button("Export PDF / JSON / CSV…") {
-                    let panel = NSOpenPanel()
-                    panel.canChooseDirectories = true
-                    panel.canChooseFiles = false
-                    guard panel.runModal() == .OK, let url = panel.url else { return }
-                    runner.export(to: url, companyName: appModel.settings.companyName)
+                Button("Save PDF / JSON / CSV to Downloads") {
+                    runner.exportToDownloads(companyName: appModel.settings.companyName)
                 }
                 .buttonStyle(.bordered)
                 .disabled(runner.isRunningAll)
@@ -272,12 +268,8 @@ struct ConsolidatedReportView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(runner.didSave)
 
-                    Button("Export PDF / JSON / CSV…") {
-                        let panel = NSOpenPanel()
-                        panel.canChooseDirectories = true
-                        panel.canChooseFiles = false
-                        guard panel.runModal() == .OK, let url = panel.url else { return }
-                        runner.export(to: url, companyName: companyName)
+                    Button("Save PDF / JSON / CSV to Downloads") {
+                        runner.exportToDownloads(companyName: companyName)
                     }
                     .buttonStyle(.bordered)
 
@@ -446,16 +438,10 @@ final class HomeDiagnosticsRunner: ObservableObject, @unchecked Sendable {
         }
     }
 
-    func export(to directory: URL, companyName: String) {
+    /// Saves PDF + JSON + CSV straight into ~/Downloads.
+    func exportToDownloads(companyName: String) {
         guard let session else { lastExport = "No session to export."; return }
-        do {
-            let written = try ReportExporter().export(session, to: directory,
-                                                      formats: [.pdf, .json, .csv],
-                                                      companyName: companyName)
-            lastExport = "Exported \(written.count) file(s) to \(directory.path)"
-        } catch {
-            lastExport = error.localizedDescription
-        }
+        lastExport = QuickExport.export(session, companyName: companyName)
     }
 }
 
