@@ -13,6 +13,8 @@ public enum ReportSender {
         case invalidWebhookURL
         case badStatus(Int)
         case transport(String)
+        case restrictedAccess
+        case formURLIncomplete
 
         public var errorDescription: String? {
             switch self {
@@ -22,6 +24,10 @@ public enum ReportSender {
                 return "The Google Sheet endpoint returned HTTP \(code). Check the Apps Script deployment."
             case .transport(let message):
                 return "Network error: \(message)"
+            case .restrictedAccess:
+                return "Google asked for sign-in — the deployment is set to \"Only me\". Either publish the web app as \"Anyone\", or paste a Google Form \"Get pre-filled link\" URL instead (works without public deployment)."
+            case .formURLIncomplete:
+                return "This looks like a Google Form link but has no entry field. Use Forms → Send → link icon → \"Get pre-filled link\", submit it once, then paste that URL."
             }
         }
     }
@@ -90,27 +96,48 @@ public enum ReportSender {
         )
     }
 
-    /// POSTs the session payload as JSON to the configured webhook.
-    /// The endpoint should be a Google Apps Script web app deployed with
-    /// "Execute as me / Anyone" access that appends the fields to a sheet.
+    /// Sends the session to the configured endpoint. Two URL kinds are
+    /// supported:
+    ///
+    /// 1. Apps Script web app (`…/exec`) — JSON POST. Needs "Anyone" access.
+    /// 2. Google Form pre-filled link (`…/forms/d/e/…/viewform?entry.…=…`) —
+    ///    converted to a `formResponse` submission GET. Works even when the
+    ///    account cannot publish public web apps ("Only me" deployments).
     public static func sendToSheet(
         _ session: DiagnosticSession,
         webhookURL: URL,
         companyName: String = ""
     ) async throws {
         guard isValidSheetWebhook(webhookURL) else { throw SendError.invalidWebhookURL }
-        var request = URLRequest(url: webhookURL)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        request.httpBody = try encoder.encode(sheetPayload(for: session, companyName: companyName))
+
+        let request: URLRequest
+        if isFormURL(webhookURL) {
+            guard let formURL = formResponseURL(for: session, webhookURL: webhookURL) else {
+                throw SendError.formURLIncomplete
+            }
+            var r = URLRequest(url: formURL)
+            r.httpMethod = "GET"
+            r.timeoutInterval = 30
+            request = r
+        } else {
+            var r = URLRequest(url: webhookURL)
+            r.httpMethod = "POST"
+            r.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            r.timeoutInterval = 30
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            r.httpBody = try encoder.encode(sheetPayload(for: session, companyName: companyName))
+            request = r
+        }
 
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse else {
                 throw SendError.transport("No HTTP response")
+            }
+            // "Only me" deployments bounce anonymous clients to the login page.
+            if let host = http.url?.host, host.contains("accounts.google.com") {
+                throw SendError.restrictedAccess
             }
             guard (200..<300).contains(http.statusCode) else {
                 throw SendError.badStatus(http.statusCode)
@@ -120,6 +147,43 @@ public enum ReportSender {
         } catch {
             throw SendError.transport(error.localizedDescription)
         }
+    }
+
+    // MARK: - Google Form submission support
+
+    /// True for pre-filled Form links (`docs.google.com/forms/…`).
+    public static func isFormURL(_ url: URL) -> Bool {
+        guard let host = url.host?.lowercased(), host.contains("docs.google.com") || host.contains("forms.gle") else { return false }
+        return url.absoluteString.contains("/forms/")
+    }
+
+    /// Converts a pre-filled Form URL into a working `formResponse` submission
+    /// by swapping `viewform` → `formResponse` and replacing the first
+    /// `entry.…` value with a compact one-field report.
+    public static func formResponseURL(for session: DiagnosticSession, webhookURL: URL) -> URL? {
+        var urlString = webhookURL.absoluteString
+        if urlString.contains("/viewform") {
+            urlString = urlString.replacingOccurrences(of: "/viewform", with: "/formResponse")
+        }
+        guard urlString.contains("/formResponse") else { return nil }
+
+        guard var components = URLComponents(string: urlString),
+              let entryIndex = components.queryItems?.firstIndex(where: { $0.name.hasPrefix("entry.") })
+        else { return nil }
+
+        let payload = sheetPayload(for: session, companyName: "")
+        let compact = [
+            payload.timestamp, payload.company, payload.technician,
+            payload.deviceName, payload.model, payload.serial, payload.chip,
+            payload.osVersion, payload.memory, payload.storage, payload.verdict,
+            "P\(payload.testsPassed)/W\(payload.testsWarning)/F\(payload.testsFailed)/M\(payload.testsManual)",
+            payload.summary,
+        ].joined(separator: " | ")
+
+        var items = components.queryItems ?? []
+        items[entryIndex] = URLQueryItem(name: items[entryIndex].name, value: compact)
+        components.queryItems = items
+        return components.url
     }
 
     // MARK: - Email (mailto composer)

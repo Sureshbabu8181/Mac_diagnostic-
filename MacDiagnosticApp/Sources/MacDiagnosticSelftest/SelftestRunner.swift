@@ -178,6 +178,18 @@ struct SelftestRunner {
         let sick = BenchmarkScore.compute(for: weak)
         check("unhealthy machine scores low", sick.overall < 50 && sick.grade == "F")
 
+        print("Google Form delivery")
+        let formURL = URL(string: "https://docs.google.com/forms/d/e/1FAIpQLScTest/viewform?entry.1111111=abc&entry.2222222=xyz")!
+        check("form URL detected", ReportSender.isFormURL(formURL) && !ReportSender.isFormURL(URL(string: "https://script.google.com/macros/s/AKf/exec")!))
+        if let converted = ReportSender.formResponseURL(for: session, webhookURL: formURL) {
+            let s = converted.absoluteString
+            check("form converts to formResponse", s.contains("/formResponse") && !s.contains("viewform") && s.contains("entry.1111111=") && s.contains("SELFTEST"))
+        } else {
+            check("form converts to formResponse", false)
+        }
+        let noEntry = URL(string: "https://docs.google.com/forms/d/e/1FAIpQLScTest/viewform")!
+        check("form without entry rejected", ReportSender.formResponseURL(for: session, webhookURL: noEntry) == nil)
+
         print("Local store")
         do {
             let store = DiagnosticStore(inMemory: true)

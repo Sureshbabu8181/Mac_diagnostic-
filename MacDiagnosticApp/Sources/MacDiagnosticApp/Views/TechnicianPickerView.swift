@@ -110,10 +110,10 @@ struct SettingsView: View {
                 Text("Used to prefill the “Email Report” composer. Leave empty to compose with a blank To: field.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                TextField("Google Sheet webhook URL (Apps Script)", text: $sheetsWebhookURL)
+                TextField("Google Sheet webhook URL", text: $sheetsWebhookURL)
                     .textFieldStyle(.roundedBorder)
                     .onChange(of: sheetsWebhookURL) { isDirty = true }
-                Text("Deploy a Google Apps Script web app that appends JSON fields (timestamp, serial, verdict, summary, …) as a sheet row, then paste its /exec URL here. Must start with https://.")
+                Text("Option A (Apps Script): deploy a web app with “Anyone” access and paste its /exec URL.\nOption B (works when your account only allows “Only me”): link a Google Form to the sheet, add one short-answer question, then Forms → Send → link → “Get pre-filled link” → type anything → Get link → paste that URL here. The app submits each report through the form.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Toggle("Auto-send report to Google Sheet after each saved session", isOn: $autoSendToSheet)
