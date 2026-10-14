@@ -20,6 +20,17 @@ final class SessionRunViewModel: ObservableObject, @unchecked Sendable {
     @Published var sortExports: [URL] = []
     @Published private(set) var lastSaveMessage: String?
     @Published private(set) var didSave = false
+    @Published private(set) var lastSendStatus: String?
+
+    /// Snapshot of opt-in report-delivery settings, copied from AppModel when
+    /// the flow binds so sending never races settings changes.
+    struct ReportDelivery {
+        var emailRecipient: String
+        var sheetWebhookURL: String
+        var autoSendToSheet: Bool
+        var companyName: String
+    }
+    var reportDelivery: ReportDelivery?
 
     private(set) var engine: DiagnosticEngine
     private(set) var store: DiagnosticStore?
@@ -119,10 +130,65 @@ final class SessionRunViewModel: ObservableObject, @unchecked Sendable {
             try store.save(engine.session)
             didSave = true
             lastSaveMessage = nil
+            autoSendToSheetIfConfigured()
             return true
         } catch {
             lastSaveMessage = "Failed to save session: \(error.localizedDescription)"
             return false
+        }
+    }
+
+    // MARK: - Report delivery (email / Google Sheet)
+
+    /// Opens the default mail client with the report prefilled (mailto:).
+    func emailReport() async {
+        let delivery = reportDelivery
+        let opened = await ReportSender.openEmailComposer(
+            recipient: delivery?.emailRecipient ?? "",
+            session: engine.session,
+            companyName: delivery?.companyName ?? ""
+        )
+        lastSendStatus = opened
+            ? "Email composer opened — review and send."
+            : "Could not open a mail client. Set a default Mail app in System Settings."
+    }
+
+    /// POSTs the session payload to the configured Google Sheet webhook.
+    func sendToSheet() async {
+        guard let delivery = reportDelivery,
+              let url = URL(string: delivery.sheetWebhookURL),
+              ReportSender.isValidSheetWebhook(url)
+        else {
+            lastSendStatus = "Set the Google Sheet webhook URL in Settings first."
+            return
+        }
+        lastSendStatus = "Sending to Google Sheet…"
+        do {
+            try await ReportSender.sendToSheet(engine.session, webhookURL: url, companyName: delivery.companyName)
+            lastSendStatus = "Sent to Google Sheet ✓"
+        } catch {
+            lastSendStatus = error.localizedDescription
+        }
+    }
+
+    /// Fires automatically after a successful save when the technician enabled
+    /// auto-send and configured a webhook in Settings.
+    private func autoSendToSheetIfConfigured() {
+        guard let delivery = reportDelivery, delivery.autoSendToSheet,
+              let url = URL(string: delivery.sheetWebhookURL),
+              ReportSender.isValidSheetWebhook(url)
+        else { return }
+        let session = engine.session
+        let company = delivery.companyName
+        Task { @MainActor in
+            do {
+                try await ReportSender.sendToSheet(session, webhookURL: url, companyName: company)
+                lastSendStatus = "Auto-sent to Google Sheet ✓"
+                AppLogger.shared.info("Auto-sent finished session report to Google Sheet")
+            } catch {
+                lastSendStatus = "Auto-send failed: \(error.localizedDescription)"
+                AppLogger.shared.error("Auto-send to Google Sheet failed: \(error.localizedDescription)")
+            }
         }
     }
 

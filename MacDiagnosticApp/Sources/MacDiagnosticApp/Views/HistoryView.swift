@@ -94,6 +94,12 @@ struct HistoryView: View {
                     .padding(6)
                     .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .controlBackgroundColor)))
                 }
+
+                Divider().padding(.vertical, 6)
+                ReportSendButtons(session: session)
+                if !exported.isEmpty {
+                    Text(exported).font(.caption).foregroundStyle(.secondary)
+                }
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)

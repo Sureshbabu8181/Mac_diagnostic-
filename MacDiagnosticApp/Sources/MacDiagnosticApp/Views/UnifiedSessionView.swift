@@ -208,6 +208,9 @@ struct UnifiedSessionView: View {
                     Text("Session saved to local history.").font(.caption).foregroundStyle(.green)
                 }
             }
+
+            ReportSendButtons(session: vm.engine.session)
+                .disabled(vm.remainingManual.isEmpty == false)
         }
         .frame(maxWidth: .infinity)
     }

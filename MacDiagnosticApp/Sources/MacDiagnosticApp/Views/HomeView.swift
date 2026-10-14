@@ -184,6 +184,10 @@ struct HomeView: View {
                     Text(export).font(.caption).foregroundStyle(.green)
                 }
             }
+
+            if let session = runner.session, !runner.isRunningAll {
+                ReportSendButtons(session: session)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding()
@@ -287,6 +291,8 @@ struct ConsolidatedReportView: View {
                         Text(export).font(.caption).foregroundStyle(.green)
                     }
                 }
+
+                ReportSendButtons(session: session)
             } else {
                 Text("No session results available.").foregroundStyle(.secondary)
             }

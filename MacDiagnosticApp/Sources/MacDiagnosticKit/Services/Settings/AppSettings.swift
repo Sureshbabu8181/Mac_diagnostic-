@@ -8,14 +8,36 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// color background; when disabled they use a plain white/neutral background.
     public var accentTestButtons: Bool
 
-    public init(companyName: String = "", batteryThresholds: BatteryThresholds = BatteryThresholds(), accentTestButtons: Bool = true) {
+    // MARK: Report delivery (only used when the technician opts in)
+
+    /// Default recipient for the "Email Report" mailto composer.
+    public var reportEmailRecipient: String
+    /// Google Apps Script web-app endpoint (HTTPS) that appends each report
+    /// as a row in a Google Sheet. Leave empty to disable.
+    public var sheetsWebhookURL: String
+    /// When enabled (and a webhook is configured), each finished session is
+    /// POSTed to the sheet automatically after it is saved.
+    public var autoSendToSheetAfterRun: Bool
+
+    public init(
+        companyName: String = "",
+        batteryThresholds: BatteryThresholds = BatteryThresholds(),
+        accentTestButtons: Bool = true,
+        reportEmailRecipient: String = "",
+        sheetsWebhookURL: String = "",
+        autoSendToSheetAfterRun: Bool = false
+    ) {
         self.companyName = companyName
         self.batteryThresholds = batteryThresholds
         self.accentTestButtons = accentTestButtons
+        self.reportEmailRecipient = reportEmailRecipient
+        self.sheetsWebhookURL = sheetsWebhookURL
+        self.autoSendToSheetAfterRun = autoSendToSheetAfterRun
     }
 
     private enum CodingKeys: String, CodingKey {
         case companyName, batteryThresholds, accentTestButtons
+        case reportEmailRecipient, sheetsWebhookURL, autoSendToSheetAfterRun
     }
 
     public init(from decoder: Decoder) throws {
@@ -23,6 +45,9 @@ public struct AppSettings: Codable, Sendable, Equatable {
         companyName = try container.decodeIfPresent(String.self, forKey: .companyName) ?? ""
         batteryThresholds = try container.decodeIfPresent(BatteryThresholds.self, forKey: .batteryThresholds) ?? BatteryThresholds()
         accentTestButtons = try container.decodeIfPresent(Bool.self, forKey: .accentTestButtons) ?? true
+        reportEmailRecipient = try container.decodeIfPresent(String.self, forKey: .reportEmailRecipient) ?? ""
+        sheetsWebhookURL = try container.decodeIfPresent(String.self, forKey: .sheetsWebhookURL) ?? ""
+        autoSendToSheetAfterRun = try container.decodeIfPresent(Bool.self, forKey: .autoSendToSheetAfterRun) ?? false
     }
 }
 

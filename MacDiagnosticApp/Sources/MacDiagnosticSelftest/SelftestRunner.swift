@@ -94,6 +94,42 @@ struct SelftestRunner {
         let pdf = PDFReportRenderer.render(session: session, companyName: "ACME")
         check("PDF produced with header", pdf.prefix(4).map { String(format: "%c", $0) }.joined() == "%PDF" && pdf.count > 100)
 
+        print("Report delivery (offline)")
+        let text = ReportBuilder(companyName: "ACME").textSummary(for: session)
+        check("text summary contains serial + verdict",
+              text.contains("SELFTEST") && text.uppercased().contains("OVERALL:"))
+        check("text summary lists tests", text.contains("Battery:"))
+        if let mailto = ReportSender.mailtoURL(recipient: "tech@example.com",
+                                               subject: ReportSender.emailSubject(for: session),
+                                               body: text) {
+            let s = mailto.absoluteString
+            check("mailto URL well-formed",
+                  s.hasPrefix("mailto:tech@example.com?subject=")
+                    && !s.contains("\n")
+                    && s.contains("SELFTEST"))
+        } else {
+            check("mailto URL well-formed", false)
+        }
+        let payload = ReportSender.sheetPayload(for: session, companyName: "ACME")
+        check("sheet payload flat fields", payload.serial == "SELFTEST" && payload.verdict == session.overall.displayName && payload.company == "ACME")
+        check("sheet webhook validation", ReportSender.isValidSheetWebhook(URL(string: "https://script.google.com/macros/s/abc/exec")!)
+              && !ReportSender.isValidSheetWebhook(URL(string: "http://insecure.example.com")!))
+        var deliverySettings = AppSettings(reportEmailRecipient: "a@b.c", sheetsWebhookURL: "https://x.example/exec", autoSendToSheetAfterRun: true)
+        deliverySettings.companyName = "ACME"
+        if let encoded = try? JSONEncoder().encode(deliverySettings),
+           let decoded = try? JSONDecoder().decode(AppSettings.self, from: encoded) {
+            check("settings round-trip new fields",
+                  decoded.reportEmailRecipient == "a@b.c" && decoded.autoSendToSheetAfterRun && decoded.sheetsWebhookURL == "https://x.example/exec")
+        } else {
+            check("settings round-trip new fields", false)
+        }
+        let legacyJSON = #"{"companyName":"Old","accentTestButtons":false}"#.data(using: .utf8)!
+        if let legacy = try? JSONDecoder().decode(AppSettings.self, from: legacyJSON) {
+            check("legacy settings decode with defaults", legacy.companyName == "Old" && legacy.sheetsWebhookURL.isEmpty && !legacy.autoSendToSheetAfterRun)
+        } else {
+            check("legacy settings decode with defaults", false)
+        }
+
         print("Local store")
         do {
             let store = DiagnosticStore(inMemory: true)

@@ -75,6 +75,9 @@ struct SettingsView: View {
     @State private var goodThreshold = 80
     @State private var fairThreshold = 60
     @State private var accentTestButtons = true
+    @State private var emailRecipient = ""
+    @State private var sheetsWebhookURL = ""
+    @State private var autoSendToSheet = false
     @State private var isDirty = false
 
     var body: some View {
@@ -100,6 +103,25 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Section("Report Delivery (opt-in)") {
+                TextField("Default email recipient", text: $emailRecipient)
+                    .textFieldStyle(.roundedBorder)
+                    .onChange(of: emailRecipient) { isDirty = true }
+                Text("Used to prefill the “Email Report” composer. Leave empty to compose with a blank To: field.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("Google Sheet webhook URL (Apps Script)", text: $sheetsWebhookURL)
+                    .textFieldStyle(.roundedBorder)
+                    .onChange(of: sheetsWebhookURL) { isDirty = true }
+                Text("Deploy a Google Apps Script web app that appends JSON fields (timestamp, serial, verdict, summary, …) as a sheet row, then paste its /exec URL here. Must start with https://.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Toggle("Auto-send report to Google Sheet after each saved session", isOn: $autoSendToSheet)
+                    .onChange(of: autoSendToSheet) { isDirty = true }
+                Text("Requires a webhook URL above. Manual “Send to Sheet” buttons always remain available.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Section("App") {
                 Toggle("Accent test-button backgrounds", isOn: $accentTestButtons)
                     .onChange(of: accentTestButtons) { isDirty = true }
@@ -113,7 +135,7 @@ struct SettingsView: View {
                 Button("Export Diagnostic Logs…") { exportLogs() }
                 Button("Clear All Local History", role: .destructive) { clearHistory() }
             }
-            Text("All data is stored locally and offline. No data leaves this Mac.")
+            Text("All data is stored locally. Nothing leaves this Mac unless you tap Email Report / Send to Sheet (or enable auto-send above).")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -137,6 +159,9 @@ struct SettingsView: View {
         goodThreshold = Int(appModel.settings.batteryThresholds.goodMinimumPercent)
         fairThreshold = Int(appModel.settings.batteryThresholds.fairMinimumPercent)
         accentTestButtons = appModel.settings.accentTestButtons
+        emailRecipient = appModel.settings.reportEmailRecipient
+        sheetsWebhookURL = appModel.settings.sheetsWebhookURL
+        autoSendToSheet = appModel.settings.autoSendToSheetAfterRun
         isDirty = false
     }
 
@@ -145,6 +170,9 @@ struct SettingsView: View {
         appModel.settings.batteryThresholds.fairMinimumPercent = Double(fairThreshold)
         appModel.settings.companyName = companyName
         appModel.settings.accentTestButtons = accentTestButtons
+        appModel.settings.reportEmailRecipient = emailRecipient
+        appModel.settings.sheetsWebhookURL = sheetsWebhookURL
+        appModel.settings.autoSendToSheetAfterRun = autoSendToSheet
         appModel.saveSettings()
         isDirty = false
     }

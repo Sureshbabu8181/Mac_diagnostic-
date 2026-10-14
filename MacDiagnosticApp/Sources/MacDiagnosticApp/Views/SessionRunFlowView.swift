@@ -51,6 +51,12 @@ struct SessionRunFlowView: View {
             if let engine = appModel.makeEngine() {
                 vm.bind(engine: engine, store: appModel.store)
             }
+            vm.reportDelivery = SessionRunViewModel.ReportDelivery(
+                emailRecipient: appModel.settings.reportEmailRecipient,
+                sheetWebhookURL: appModel.settings.sheetsWebhookURL,
+                autoSendToSheet: appModel.settings.autoSendToSheetAfterRun,
+                companyName: appModel.settings.companyName
+            )
             Task {
                 if let singleKind {
                     await vm.startSingle(singleKind)
@@ -216,6 +222,11 @@ struct SessionResultView: View {
                     } else if vm.didSave {
                         Text("Session saved to local history.").font(.caption).foregroundStyle(.green)
                     }
+                }
+
+                ReportSendButtons(session: vm.engine.session)
+                if let sendStatus = vm.lastSendStatus {
+                    Text(sendStatus).font(.caption).foregroundStyle(.secondary)
                 }
             }
             .padding(24)
