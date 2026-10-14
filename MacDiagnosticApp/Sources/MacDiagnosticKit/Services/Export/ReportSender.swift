@@ -14,6 +14,7 @@ public enum ReportSender {
         case badStatus(Int)
         case transport(String)
         case restrictedAccess
+        case signInRequired
         case formURLIncomplete
 
         public var errorDescription: String? {
@@ -25,9 +26,11 @@ public enum ReportSender {
             case .transport(let message):
                 return "Network error: \(message)"
             case .restrictedAccess:
-                return "Google asked for sign-in — the deployment is set to \"Only me\". Either publish the web app as \"Anyone\", or paste a Google Form \"Get pre-filled link\" URL instead (works without public deployment)."
+                return "Google asked for sign-in — the deployment is set to \"Only me\". Either publish the web app as \"Anyone\", or paste a Google Form link instead (works without public deployment)."
+            case .signInRequired:
+                return "Google rejected the submission (sign-in required). In the Form: Settings → Responses → turn OFF \"Limit to 1 response\" and set \"Who can respond\" to anyone with the link."
             case .formURLIncomplete:
-                return "This looks like a Google Form link but has no entry field. Use Forms → Send → link icon → \"Get pre-filled link\", submit it once, then paste that URL."
+                return "Could not find the form's entry field. Paste the normal form share link (Forms → Send → 🔗) and make sure the form has at least one short-answer question."
             }
         }
     }
@@ -100,9 +103,10 @@ public enum ReportSender {
     /// supported:
     ///
     /// 1. Apps Script web app (`…/exec`) — JSON POST. Needs "Anyone" access.
-    /// 2. Google Form pre-filled link (`…/forms/d/e/…/viewform?entry.…=…`) —
-    ///    converted to a `formResponse` submission GET. Works even when the
-    ///    account cannot publish public web apps ("Only me" deployments).
+    /// 2. Google Form link (`…/forms/d/e/…/viewform`) — the app discovers the
+    ///    answer field and submits a form-encoded POST to `formResponse`.
+    ///    Works when the account cannot publish public web apps ("Only me"
+    ///    deployments), provided the form allows unauthenticated responses.
     public static func sendToSheet(
         _ session: DiagnosticSession,
         webhookURL: URL,
@@ -112,12 +116,19 @@ public enum ReportSender {
 
         let request: URLRequest
         if isFormURL(webhookURL) {
-            guard let formURL = formResponseURL(for: session, webhookURL: webhookURL) else {
-                throw SendError.formURLIncomplete
+            let entry: String
+            if let existing = existingEntryField(in: webhookURL) {
+                entry = existing
+            } else {
+                entry = try await discoverEntryID(from: webhookURL)
             }
-            var r = URLRequest(url: formURL)
-            r.httpMethod = "GET"
+            guard let action = formActionURL(from: webhookURL) else { throw SendError.formURLIncomplete }
+            var r = URLRequest(url: action)
+            r.httpMethod = "POST"
+            r.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
             r.timeoutInterval = 30
+            let payload = sheetPayload(for: session, companyName: companyName)
+            r.httpBody = formEncodedBody(entryField: entry, value: compactSummary(payload))
             request = r
         } else {
             var r = URLRequest(url: webhookURL)
@@ -139,6 +150,9 @@ public enum ReportSender {
             if let host = http.url?.host, host.contains("accounts.google.com") {
                 throw SendError.restrictedAccess
             }
+            if http.statusCode == 401 || http.statusCode == 403 {
+                throw SendError.signInRequired
+            }
             guard (200..<300).contains(http.statusCode) else {
                 throw SendError.badStatus(http.statusCode)
             }
@@ -151,39 +165,91 @@ public enum ReportSender {
 
     // MARK: - Google Form submission support
 
-    /// True for pre-filled Form links (`docs.google.com/forms/…`).
+    /// True for Form links (`docs.google.com/forms/…`).
     public static func isFormURL(_ url: URL) -> Bool {
         guard let host = url.host?.lowercased(), host.contains("docs.google.com") || host.contains("forms.gle") else { return false }
         return url.absoluteString.contains("/forms/")
     }
 
-    /// Converts a pre-filled Form URL into a working `formResponse` submission
-    /// by swapping `viewform` → `formResponse` and replacing the first
-    /// `entry.…` value with a compact one-field report.
-    public static func formResponseURL(for session: DiagnosticSession, webhookURL: URL) -> URL? {
-        var urlString = webhookURL.absoluteString
+    /// Answer-field id already present in a pre-filled link, if any.
+    public static func existingEntryField(in url: URL) -> String? {
+        URLComponents(url: url, resolvingAgainstBaseURL: false)?
+            .queryItems?.first(where: { $0.name.hasPrefix("entry.") })?.name
+    }
+
+    /// The `formResponse` action URL: `viewform` → `formResponse`, query stripped.
+    public static func formActionURL(from url: URL) -> URL? {
+        var urlString = url.absoluteString
         if urlString.contains("/viewform") {
             urlString = urlString.replacingOccurrences(of: "/viewform", with: "/formResponse")
         }
-        guard urlString.contains("/formResponse") else { return nil }
-
-        guard var components = URLComponents(string: urlString),
-              let entryIndex = components.queryItems?.firstIndex(where: { $0.name.hasPrefix("entry.") })
+        guard urlString.contains("/formResponse"),
+              var components = URLComponents(string: urlString)
         else { return nil }
+        components.queryItems = nil
+        return components.url
+    }
 
-        let payload = sheetPayload(for: session, companyName: "")
-        let compact = [
+    public static func compactSummary(_ payload: SheetPayload) -> String {
+        [
             payload.timestamp, payload.company, payload.technician,
             payload.deviceName, payload.model, payload.serial, payload.chip,
             payload.osVersion, payload.memory, payload.storage, payload.verdict,
             "P\(payload.testsPassed)/W\(payload.testsWarning)/F\(payload.testsFailed)/M\(payload.testsManual)",
             payload.summary,
         ].joined(separator: " | ")
+    }
 
-        var items = components.queryItems ?? []
-        items[entryIndex] = URLQueryItem(name: items[entryIndex].name, value: compact)
-        components.queryItems = items
-        return components.url
+    public static func formEncodedBody(entryField: String, value: String) -> Data? {
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        guard let encoded = value.addingPercentEncoding(withAllowedCharacters: allowed) else { return nil }
+        return "\(entryField)=\(encoded)".data(using: .utf8)
+    }
+
+    /// Fetches the public form page and extracts the answer-field id, so users
+    /// can paste the ordinary Send → 🔗 share link.
+    public static func discoverEntryID(from formURL: URL) async throws -> String {
+        let html: String
+        do {
+            let (data, response) = try await URLSession.shared.data(from: formURL)
+            if let http = response as? HTTPURLResponse, http.url?.host?.contains("accounts.google.com") == true {
+                throw SendError.restrictedAccess
+            }
+            html = String(data: data, encoding: .utf8) ?? ""
+        } catch let error as SendError {
+            throw error
+        } catch {
+            throw SendError.transport(error.localizedDescription)
+        }
+        guard let entry = entryID(in: html) else { throw SendError.formURLIncomplete }
+        return entry
+    }
+
+    /// Pure parser: finds the form's answer-field id in the page HTML.
+    /// Handles both the literal `entry.<digits>` token (pre-filled pages) and
+    /// the new Forms public-data format where the id appears as
+    /// `[[<id>,null,<type>]]` inside FB_PUBLIC_LOAD_DATA_.
+    public static func entryID(in html: String) -> String? {
+        // 1) Literal "entry.123…" tokens.
+        let literalPattern = "entry\\.\\d+"
+        if let regex = try? NSRegularExpression(pattern: literalPattern) {
+            let range = NSRange(html.startIndex..<html.endIndex, in: html)
+            if let match = regex.firstMatch(in: html, range: range),
+               let swiftRange = Range(match.range, in: html) {
+                return String(html[swiftRange])
+            }
+        }
+        // 2) New-format answer field: [[<id>,null,<type>]].
+        let fieldPattern = "\\[\\[(\\d+),null,\\d+\\]\\]"
+        if let regex = try? NSRegularExpression(pattern: fieldPattern) {
+            let range = NSRange(html.startIndex..<html.endIndex, in: html)
+            if let match = regex.firstMatch(in: html, range: range),
+               let idRange = Range(match.range(at: 1), in: html) {
+                return "entry.\(html[idRange])"
+            }
+        }
+        return nil
     }
 
     // MARK: - Email (mailto composer)

@@ -113,7 +113,7 @@ struct SettingsView: View {
                 TextField("Google Sheet webhook URL", text: $sheetsWebhookURL)
                     .textFieldStyle(.roundedBorder)
                     .onChange(of: sheetsWebhookURL) { isDirty = true }
-                Text("Option A (Apps Script): deploy a web app with “Anyone” access and paste its /exec URL.\nOption B (works when your account only allows “Only me”): link a Google Form to the sheet, add one short-answer question, then Forms → Send → link → “Get pre-filled link” → type anything → Get link → paste that URL here. The app submits each report through the form.")
+                Text("Option A (Apps Script): deploy a web app with “Anyone” access and paste its /exec URL.\nOption B (works with “Only me” accounts): link a Google Form to the sheet, add one short-answer question, then paste the form's normal share link (Forms → Send → 🔗). The app discovers the form field automatically and submits each report through the form.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Toggle("Auto-send report to Google Sheet after each saved session", isOn: $autoSendToSheet)

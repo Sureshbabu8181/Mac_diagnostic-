@@ -179,16 +179,23 @@ struct SelftestRunner {
         check("unhealthy machine scores low", sick.overall < 50 && sick.grade == "F")
 
         print("Google Form delivery")
-        let formURL = URL(string: "https://docs.google.com/forms/d/e/1FAIpQLScTest/viewform?entry.1111111=abc&entry.2222222=xyz")!
+        let formURL = URL(string: "https://docs.google.com/forms/d/e/1FAIpQLScTest/viewform?entry.1111111=abc&usp=pp_url")!
         check("form URL detected", ReportSender.isFormURL(formURL) && !ReportSender.isFormURL(URL(string: "https://script.google.com/macros/s/AKf/exec")!))
-        if let converted = ReportSender.formResponseURL(for: session, webhookURL: formURL) {
-            let s = converted.absoluteString
-            check("form converts to formResponse", s.contains("/formResponse") && !s.contains("viewform") && s.contains("entry.1111111=") && s.contains("SELFTEST"))
+        check("pre-filled entry detected", ReportSender.existingEntryField(in: formURL) == "entry.1111111")
+        if let action = ReportSender.formActionURL(from: formURL) {
+            check("form action URL built", action.absoluteString.contains("/formResponse") && !action.absoluteString.contains("viewform") && !(action.absoluteString.contains("?")))
         } else {
-            check("form converts to formResponse", false)
+            check("form action URL built", false)
         }
-        let noEntry = URL(string: "https://docs.google.com/forms/d/e/1FAIpQLScTest/viewform")!
-        check("form without entry rejected", ReportSender.formResponseURL(for: session, webhookURL: noEntry) == nil)
+        let sampleHTML = #"FB_PUBLIC_LOAD_DATA_ = [null,[null,[[1569035923,"Report",null,0,[[1724868083,null,1]],null,null,null,null,null,null,[null,"Report"]]],null,null,null,null,null,null,"One Diagnose Reports",76]]"#
+        check("entry id discovered from share link", ReportSender.entryID(in: sampleHTML) == "entry.1724868083")
+        let formPayload = ReportSender.sheetPayload(for: session, companyName: "ACME")
+        if let body = ReportSender.formEncodedBody(entryField: "entry.1724868083", value: ReportSender.compactSummary(formPayload)) {
+            let s = String(data: body, encoding: .utf8) ?? ""
+            check("form body encodes report", s.hasPrefix("entry.1724868083=") && s.contains("SELFTEST"))
+        } else {
+            check("form body encodes report", false)
+        }
 
         print("Local store")
         do {
