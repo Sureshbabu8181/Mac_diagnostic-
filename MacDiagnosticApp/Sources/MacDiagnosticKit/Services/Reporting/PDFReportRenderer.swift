@@ -2,10 +2,10 @@ import Foundation
 import CoreGraphics
 import AppKit
 
-/// PDF report renderer (AppKit text in a flipped CoreGraphics context).
-/// Deterministic, offline, local. Text is drawn with NSAttributedString on a
-/// flipped graphics context, which keeps letters upright — raw CoreText
-/// CTLineDraw with a manual text matrix can flip/mirror glyphs in PDF output.
+/// PDF report renderer (CoreText on a raw CoreGraphics PDF context).
+/// Deterministic, offline, local. Text is drawn with CTLineDraw at an
+/// identity text matrix, which is the only combination that reliably keeps
+/// glyphs upright and left-to-right in PDF output.
 public enum PDFReportRenderer {
     struct TextRun {
         var string: String
@@ -128,16 +128,19 @@ public enum PDFReportRenderer {
             .font: font,
             .foregroundColor: color,
         ]
-        let string = NSAttributedString(string: run.string, attributes: attributes)
+        let attributed = NSAttributedString(string: run.string, attributes: attributes)
+        let line = CTLineCreateWithAttributedString(attributed)
 
-        // Flipped context: `point` is the text's top-left in the top-down
-        // coordinate system this renderer lays out in, and the text draws
-        // upright (no inverted / mirrored glyphs).
-        let graphics = NSGraphicsContext(cgContext: ctx, flipped: true)
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = graphics
-        string.draw(at: point)
-        NSGraphicsContext.restoreGraphicsState()
+        // PDF CGContexts are bottom-up: origin bottom-left, y grows upward.
+        // CTLineDraw with an identity text matrix draws upright left-to-right
+        // — no NSGraphicsContext flip involved, so glyphs can never mirror.
+        // `point.y` is the TOP of the line in this renderer's layout; convert
+        // to a baseline just below it.
+        ctx.saveGState()
+        ctx.textMatrix = .identity
+        ctx.textPosition = CGPoint(x: point.x, y: point.y - run.fontSize)
+        CTLineDraw(line, ctx)
+        ctx.restoreGState()
     }
 }
 
