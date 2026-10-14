@@ -196,6 +196,25 @@ struct SelftestRunner {
         } else {
             check("form body encodes report", false)
         }
+        let multiHTML = #"[111,"Serial",null,0,[[1111,null,1]],null,null,[222,"Verdict",null,0,[[2222,null,1]],null,null,[333,"Summary",null,0,[[3333,null,1]]]]"#
+        let pairs = ReportSender.formEntries(in: multiHTML)
+        check("multiple question titles parsed", pairs.count == 3 && pairs[0].title == "Serial" && pairs[2].entry == "entry.3333")
+        let matched = ReportSender.matchFormFields(entries: pairs, fields: [
+            (key: "serial", value: "SELFTEST"),
+            (key: "verdict", value: "PASS"),
+            (key: "summary", value: "full details"),
+            (key: "memory", value: "should be skipped"),
+        ])
+        check("title-based columns matched", matched.count == 3
+              && matched[0].entryField == "entry.1111" && matched[0].value == "SELFTEST"
+              && matched[1].entryField == "entry.2222" && matched[1].value == "PASS"
+              && matched[2].entryField == "entry.3333" && matched[2].value == "full details")
+        if let multiBody = ReportSender.formEncodedBody(fields: matched) {
+            let s = String(data: multiBody, encoding: .utf8) ?? ""
+            check("multi-column body pairs", s.contains("entry.1111=SELFTEST") && s.contains("entry.2222=PASS") && s.contains("&"))
+        } else {
+            check("multi-column body pairs", false)
+        }
 
         print("Local store")
         do {

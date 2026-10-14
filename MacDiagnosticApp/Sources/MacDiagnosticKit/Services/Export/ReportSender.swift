@@ -52,6 +52,7 @@ public enum ReportSender {
         public var memory: String
         public var storage: String
         public var verdict: String
+        public var benchmark: String
         public var testsPassed: Int
         public var testsWarning: Int
         public var testsFailed: Int
@@ -78,6 +79,7 @@ public enum ReportSender {
             "\(result.kind.displayName): \(result.status.displayName) — \(result.summary)"
         }
         let iso = ISO8601DateFormatter()
+        let bench = BenchmarkScore.compute(for: session)
         return SheetPayload(
             timestamp: iso.string(from: session.endedAt ?? session.startedAt),
             company: companyName,
@@ -91,12 +93,81 @@ public enum ReportSender {
             memory: session.device.memoryGB,
             storage: session.device.storageGB,
             verdict: session.overall.displayName,
+            benchmark: "\(bench.overall)/100 (Grade \(bench.grade))",
             testsPassed: passed,
             testsWarning: warning,
             testsFailed: failed,
             testsManual: manual,
             summary: summaryLines.joined(separator: "\n")
         )
+    }
+
+    /// Detailed per-column values for a Google Form, keyed by the canonical
+    /// question title (lowercased). Each entry becomes its own sheet column
+    /// when the form has a matching short-answer question.
+    public static func titledFieldValues(for session: DiagnosticSession, companyName: String) -> [(key: String, value: String)] {
+        let p = sheetPayload(for: session, companyName: companyName)
+        func status(_ kind: DiagnosticKind) -> String {
+            session.result(for: kind)?.status.displayName ?? "NOT TESTED"
+        }
+        return [
+            ("timestamp", p.timestamp),
+            ("company", p.company),
+            ("technician", p.technician),
+            ("device", p.deviceName),
+            ("model", "\(p.model) (\(p.modelIdentifier))"),
+            ("serial", p.serial),
+            ("chip", p.chip),
+            ("macos", p.osVersion),
+            ("memory", p.memory),
+            ("storage", p.storage),
+            ("verdict", p.verdict),
+            ("passed", "\(p.testsPassed)"),
+            ("warnings", "\(p.testsWarning)"),
+            ("failed", "\(p.testsFailed)"),
+            ("manual", "\(p.testsManual)"),
+            ("benchmark", p.benchmark),
+            ("battery", status(.battery)),
+            ("stress test", status(.stressTest)),
+            ("monitor", status(.monitor)),
+            ("summary", ReportBuilder(companyName: companyName, appVersion: session.appVersion, technicianName: session.technicianName).textSummary(for: session)),
+        ]
+    }
+
+    /// Maps canonical field keys onto a form's question titles (case- and
+    /// punctuation-insensitive contains match, with common aliases).
+    /// Unmatched questions are skipped; unmatched values are ignored.
+    public static func matchFormFields(
+        entries: [(title: String, entry: String)],
+        fields: [(key: String, value: String)]
+    ) -> [(entryField: String, value: String)] {
+        let aliases: [String: [String]] = [
+            "summary": ["summary", "report", "detail"],
+            "verdict": ["verdict", "overall"],
+            "macos": ["macos", "os", "system"],
+            "memory": ["memory", "ram"],
+            "device": ["device"],
+            "benchmark": ["benchmark", "score"],
+            "passed": ["passed", "pass"],
+            "warnings": ["warning"],
+            "failed": ["fail"],
+            "storage": ["storage", "disk"],
+            "serial": ["serial"],
+        ]
+        var result: [(String, String)] = []
+        var used = Set<String>()
+        for field in fields {
+            let keys = aliases[field.key] ?? [field.key]
+            if let match = entries.first(where: { entry in
+                !used.contains(entry.entry) && keys.contains { key in
+                    entry.title.lowercased().replacingOccurrences(of: ":", with: "").contains(key)
+                }
+            }) {
+                used.insert(match.entry)
+                result.append((match.entry, field.value))
+            }
+        }
+        return result
     }
 
     /// Sends the session to the configured endpoint. Two URL kinds are
@@ -116,19 +187,34 @@ public enum ReportSender {
 
         let request: URLRequest
         if isFormURL(webhookURL) {
-            let entry: String
+            var fields: [(entryField: String, value: String)] = []
             if let existing = existingEntryField(in: webhookURL) {
-                entry = existing
+                // Pre-filled single-field link: fill it with the full text report.
+                let summary = ReportBuilder(companyName: companyName, appVersion: session.appVersion,
+                                            technicianName: session.technicianName).textSummary(for: session)
+                fields = [(existing, summary)]
             } else {
-                entry = try await discoverEntryID(from: webhookURL)
+                guard let html = try? await fetchHTML(webhookURL) else { throw SendError.transport("Could not load the form page.") }
+                let entries = formEntries(in: html)
+                if entries.isEmpty {
+                    throw SendError.formURLIncomplete
+                }
+                fields = matchFormFields(entries: entries, fields: titledFieldValues(for: session, companyName: companyName))
+                if fields.isEmpty {
+                    // No title matches — fall back to one detailed summary cell.
+                    let summary = ReportBuilder(companyName: companyName, appVersion: session.appVersion,
+                                                technicianName: session.technicianName).textSummary(for: session)
+                    fields = [(entries[0].entry, summary)]
+                }
             }
-            guard let action = formActionURL(from: webhookURL) else { throw SendError.formURLIncomplete }
+            guard let action = formActionURL(from: webhookURL),
+                  let body = formEncodedBody(fields: fields)
+            else { throw SendError.formURLIncomplete }
             var r = URLRequest(url: action)
             r.httpMethod = "POST"
             r.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
             r.timeoutInterval = 30
-            let payload = sheetPayload(for: session, companyName: companyName)
-            r.httpBody = formEncodedBody(entryField: entry, value: compactSummary(payload))
+            r.httpBody = body
             request = r
         } else {
             var r = URLRequest(url: webhookURL)
@@ -201,29 +287,74 @@ public enum ReportSender {
     }
 
     public static func formEncodedBody(entryField: String, value: String) -> Data? {
+        formEncodedBody(fields: [(entryField, value)])
+    }
+
+    /// Encodes one or more `entry.<id>=value` pairs into a form body.
+    public static func formEncodedBody(fields: [(entryField: String, value: String)]) -> Data? {
         var allowed = CharacterSet.alphanumerics
         allowed.insert(charactersIn: "-._~")
-        guard let encoded = value.addingPercentEncoding(withAllowedCharacters: allowed) else { return nil }
-        return "\(entryField)=\(encoded)".data(using: .utf8)
+        var parts: [String] = []
+        for field in fields {
+            guard let encoded = field.value.addingPercentEncoding(withAllowedCharacters: allowed) else { continue }
+            parts.append("\(field.entryField)=\(encoded)")
+        }
+        return parts.joined(separator: "&").data(using: .utf8)
+    }
+
+    /// Extracts (question title, entry field id) pairs from the form page.
+    /// New Forms public data embeds questions as
+    /// `[<id>,"<title>",null,<type>,[[<entryId>,null,<type>],…]…]`.
+    /// Falls back to bare `entry.<digits>` tokens (pre-filled pages).
+    public static func formEntries(in html: String) -> [(title: String, entry: String)] {
+        var pairs: [(String, String)] = []
+        let titled = "\\[\\d+,\"((?:[^\"\\\\]|\\\\.)*)\",null,\\d+,\\s*\\[\\[(\\d+),null,\\d+\\]"
+        if let regex = try? NSRegularExpression(pattern: titled) {
+            let range = NSRange(html.startIndex..<html.endIndex, in: html)
+            for match in regex.matches(in: html, range: range) {
+                guard let titleRange = Range(match.range(at: 1), in: html),
+                      let entryRange = Range(match.range(at: 2), in: html)
+                else { continue }
+                let title = String(html[titleRange])
+                    .replacingOccurrences(of: "\\u003c", with: "<")
+                    .replacingOccurrences(of: "\\u003e", with: ">")
+                    .replacingOccurrences(of: "\\\"", with: "\"")
+                pairs.append((title, "entry.\(html[entryRange])"))
+            }
+        }
+        if !pairs.isEmpty { return pairs }
+        // Legacy/pre-filled fallback: bare entry tokens, generic titles.
+        let literal = "entry\\.\\d+"
+        if let regex = try? NSRegularExpression(pattern: literal) {
+            let range = NSRange(html.startIndex..<html.endIndex, in: html)
+            for (index, match) in regex.matches(in: html, range: range).enumerated() {
+                guard let swiftRange = Range(match.range, in: html) else { continue }
+                pairs.append(("Field \(index + 1)", String(html[swiftRange])))
+            }
+        }
+        return pairs
     }
 
     /// Fetches the public form page and extracts the answer-field id, so users
     /// can paste the ordinary Send → 🔗 share link.
     public static func discoverEntryID(from formURL: URL) async throws -> String {
-        let html: String
+        let html = try await fetchHTML(formURL)
+        guard let entry = entryID(in: html) else { throw SendError.formURLIncomplete }
+        return entry
+    }
+
+    static func fetchHTML(_ formURL: URL) async throws -> String {
         do {
             let (data, response) = try await URLSession.shared.data(from: formURL)
             if let http = response as? HTTPURLResponse, http.url?.host?.contains("accounts.google.com") == true {
                 throw SendError.restrictedAccess
             }
-            html = String(data: data, encoding: .utf8) ?? ""
+            return String(data: data, encoding: .utf8) ?? ""
         } catch let error as SendError {
             throw error
         } catch {
             throw SendError.transport(error.localizedDescription)
         }
-        guard let entry = entryID(in: html) else { throw SendError.formURLIncomplete }
-        return entry
     }
 
     /// Pure parser: finds the form's answer-field id in the page HTML.
