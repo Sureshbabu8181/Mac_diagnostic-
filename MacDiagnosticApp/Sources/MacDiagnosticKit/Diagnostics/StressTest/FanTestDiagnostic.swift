@@ -15,11 +15,15 @@ public struct FanTestDiagnostic: AutomatedDiagnosticProvider {
         isManual: false
     )
 
+    /// Heat-load duration in seconds. Default 30 s (fans engage without
+    /// excessive heat soak); the dedicated Fan Test view can run 30 or 60 s.
+    public var loadDurationSeconds: Int = 30
+
     public init() {}
 
     public func run() async -> DiagnosticResult {
         let fast = ProcessInfo.processInfo.environment["MACDIAG_SELFTEST"] != nil
-        let loadDuration = fast ? 5 : 60
+        let loadDuration = fast ? 5 : max(5, loadDurationSeconds)
         let cooldownDuration = fast ? 1 : 5
         let cores = ProcessInfo.processInfo.activeProcessorCount
 
@@ -127,6 +131,7 @@ public struct FanTestDiagnostic: AutomatedDiagnosticProvider {
         }
 
         let summary: String
+        var tail = " Test over — fans may keep running briefly while the machine cools down, then should spin down to idle."
         if issues.isEmpty {
             var parts = ["Full heat load applied — fans should have ramped to high speed"]
             if let rise = stats.peakTemp, let b = baselineTemp {
@@ -136,9 +141,9 @@ public struct FanTestDiagnostic: AutomatedDiagnosticProvider {
                 parts.append("fell \(String(format: "%.1f", peakT - c))°C after load")
             }
             parts.append("confirm fan spin audibly (manual)")
-            summary = parts.joined(separator: ", ") + "."
+            summary = parts.joined(separator: ", ") + "." + tail
         } else {
-            summary = issues.joined(separator: "; ")
+            summary = issues.joined(separator: "; ") + "." + tail
         }
 
         return DiagnosticResult(kind: .fanTest, status: status, summary: summary, metrics: metrics)

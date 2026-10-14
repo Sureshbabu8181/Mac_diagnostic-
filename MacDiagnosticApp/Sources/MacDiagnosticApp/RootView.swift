@@ -23,6 +23,12 @@ struct RootView: View {
                         if kind == .stressTest {
                             StressTestContainer()
                                 .environmentObject(appModel)
+                        } else if kind == .fanTest {
+                            FanTestContainer()
+                                .environmentObject(appModel)
+                        } else if kind == .ramStress {
+                            RAMStressTestContainer()
+                                .environmentObject(appModel)
                         } else if kind == .monitor {
                             MonitorContainer()
                                 .environmentObject(appModel)

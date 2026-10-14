@@ -14,13 +14,17 @@ public struct RAMStressTestDiagnostic: AutomatedDiagnosticProvider {
         isManual: false
     )
 
+    /// Stress duration in seconds. Default 30 s; the dedicated view offers
+    /// 30 s and 60 s presets.
+    public var durationSeconds: Int = 30
+
     public init() {}
 
     /// Duration/size presets: full by default, tiny under selftest so the
     /// debug (-Onone) selftest stays fast.
     public func run() async -> DiagnosticResult {
         let fast = ProcessInfo.processInfo.environment["MACDIAG_SELFTEST"] != nil
-        let duration = fast ? 2 : 20
+        let duration = fast ? 2 : max(5, durationSeconds)
         let maxMB = fast ? 64 : 4096
         let physicalMB = Int(ProcessInfo.processInfo.physicalMemory / 1_048_576)
         let workingSetMB = max(64, min(physicalMB / 2, maxMB))
