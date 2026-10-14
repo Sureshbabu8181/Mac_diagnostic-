@@ -37,6 +37,12 @@ public struct StorageDiagnostic: AutomatedDiagnosticProvider {
             }
         }
 
+        // Quick sequential speed benchmark (temp container only; file deleted after).
+        if let speed = speedBenchmark() {
+            metrics.append(DiagnosticMetric(name: "Write Speed", value: String(format: "%.0f MB/s", speed.write)))
+            metrics.append(DiagnosticMetric(name: "Read Speed", value: String(format: "%.0f MB/s", speed.read)))
+        }
+
         var status: DiagnosticStatus = .pass
         var summary = "Readable storage verified. Internal flash SMART health is not available through macOS public APIs."
         if !failures.isEmpty {
@@ -113,5 +119,36 @@ public struct StorageDiagnostic: AutomatedDiagnosticProvider {
         return withUnsafePointer(to: &stat.f_fstypename.0) { ptr in
             String(cString: ptr)
         }
+    }
+
+    // MARK: - Speed benchmark
+
+    private struct SpeedResult {
+        let write: Double  // MB/s
+        let read: Double   // MB/s
+    }
+
+    /// Writes and reads back a 32 MB file in the app's temporary directory
+    /// (container-local on sandboxed builds) and reports sequential MB/s.
+    private func speedBenchmark() -> SpeedResult? {
+        let size = 32 * 1024 * 1024
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("macdiag-speed-\(UUID().uuidString).tmp")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let buffer = [UInt8](repeating: 0xA5, count: size)
+        let data = Data(buffer)
+
+        let wStart = DispatchTime.now()
+        do { try data.write(to: url) } catch { return nil }
+        let wSec = Double(DispatchTime.now().uptimeNanoseconds - wStart.uptimeNanoseconds) / 1e9
+
+        let rStart = DispatchTime.now()
+        guard let read = try? Data(contentsOf: url) else { return nil }
+        let rSec = Double(DispatchTime.now().uptimeNanoseconds - rStart.uptimeNanoseconds) / 1e9
+        guard read.count == size, wSec > 0, rSec > 0 else { return nil }
+
+        let mb = Double(size) / 1_000_000
+        return SpeedResult(write: mb / wSec, read: mb / rSec)
     }
 }

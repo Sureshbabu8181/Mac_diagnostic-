@@ -130,6 +130,54 @@ struct SelftestRunner {
             check("legacy settings decode with defaults", false)
         }
 
+        print("Benchmark score")
+        let bench = BenchmarkScore.compute(for: session)
+        check("score in 0...100", (0...100).contains(bench.overall))
+        check("grade consistent with score", !bench.grade.isEmpty && bench.components.count == 7)
+        var scored = session
+        scored.results = [
+            DiagnosticResult(kind: .battery, status: .pass, metrics: [
+                DiagnosticMetric(name: "Maximum Capacity", value: "95%"),
+                DiagnosticMetric(name: "Cycle Count", value: "120"),
+                DiagnosticMetric(name: "Battery Present", value: "Yes"),
+            ]),
+            DiagnosticResult(kind: .storage, status: .pass, metrics: [
+                DiagnosticMetric(name: "Read Speed", value: "2800 MB/s"),
+            ]),
+            DiagnosticResult(kind: .stressTest, status: .pass, metrics: [
+                DiagnosticMetric(name: "Throughput Under Load", value: "95.0 Mops/s"),
+                DiagnosticMetric(name: "GPU Errors", value: "None"),
+                DiagnosticMetric(name: "VRAM Pattern Test", value: "PASS"),
+                DiagnosticMetric(name: "RAM Write Bandwidth", value: "12.0 GB/s"),
+                DiagnosticMetric(name: "RAM Read Bandwidth", value: "18.0 GB/s"),
+                DiagnosticMetric(name: "RAM Pattern Errors", value: "None"),
+                DiagnosticMetric(name: "Peak Temperature", value: "34.0°C"),
+            ]),
+        ]
+        scored.overall = DiagnosticSession.computeOverall(from: scored.results)
+        let strong = BenchmarkScore.compute(for: scored)
+        check("healthy machine scores high", strong.overall >= 90 && strong.grade == "A")
+        var weak = session
+        weak.results = [
+            DiagnosticResult(kind: .battery, status: .fail, metrics: [
+                DiagnosticMetric(name: "Maximum Capacity", value: "55%"),
+                DiagnosticMetric(name: "Cycle Count", value: "1200"),
+                DiagnosticMetric(name: "Battery Present", value: "Yes"),
+            ]),
+            DiagnosticResult(kind: .stressTest, status: .fail, metrics: [
+                DiagnosticMetric(name: "Throughput Under Load", value: "20.0 Mops/s"),
+                DiagnosticMetric(name: "GPU Errors", value: "3"),
+                DiagnosticMetric(name: "VRAM Pattern Test", value: "FAIL"),
+                DiagnosticMetric(name: "RAM Write Bandwidth", value: "1.0 GB/s"),
+                DiagnosticMetric(name: "RAM Read Bandwidth", value: "2.0 GB/s"),
+                DiagnosticMetric(name: "RAM Pattern Errors", value: "2"),
+                DiagnosticMetric(name: "Peak Temperature", value: "48.0°C"),
+            ]),
+        ]
+        weak.overall = DiagnosticSession.computeOverall(from: weak.results)
+        let sick = BenchmarkScore.compute(for: weak)
+        check("unhealthy machine scores low", sick.overall < 50 && sick.grade == "F")
+
         print("Local store")
         do {
             let store = DiagnosticStore(inMemory: true)

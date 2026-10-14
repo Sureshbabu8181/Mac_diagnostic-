@@ -229,6 +229,8 @@ struct ConsolidatedReportView: View {
                 }
                 .padding(.vertical, 4)
 
+                BenchmarkScoreCard(score: BenchmarkScore.compute(for: session))
+
                 Divider()
 
                 ScrollView {

@@ -79,6 +79,11 @@ struct HistoryView: View {
                 grid(label: "Overall", value: session.overall.displayName, color: verdictColor(session.overall.verdict))
 
                 Divider().padding(.vertical, 6)
+                let bench = BenchmarkScore.compute(for: session)
+                grid(label: "Benchmark", value: "\(bench.overall)/100 — Grade \(bench.grade) (\(bench.label))")
+                BenchmarkScoreCard(score: bench)
+
+                Divider().padding(.vertical, 6)
                 Text("Results").font(.title3.bold())
                 ForEach(session.results, id: \.id) { result in
                     VStack(alignment: .leading, spacing: 2) {
