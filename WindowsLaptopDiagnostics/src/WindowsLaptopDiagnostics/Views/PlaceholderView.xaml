@@ -1,0 +1,24 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.PlaceholderView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,28" MaxWidth="760" HorizontalAlignment="Left">
+
+            <TextBlock Text="{Binding Title}" Style="{StaticResource TitleText}" />
+            <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="4" Padding="9,3"
+                    HorizontalAlignment="Left" Margin="0,8,0,14">
+                <TextBlock Text="{Binding StatusLabel}" Foreground="{StaticResource WarningBrush}"
+                           FontSize="11" FontWeight="SemiBold" />
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Planned functionality" Style="{StaticResource CardTitle}" Margin="0,0,0,8" />
+                    <TextBlock Text="{Binding Description}" Style="{StaticResource BodyText}" />
+                    <TextBlock Style="{StaticResource MutedText}" Margin="0,12,0,0"
+                               Text="This page performs no measurement and reports no result. It will be replaced by a working module in a later implementation phase." />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

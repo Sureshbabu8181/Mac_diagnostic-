@@ -1,5 +1,0 @@
-# The Windows Diagnostic Center uses only the Python standard library.
-# No third-party dependencies are required.
-#
-# tkinter ships with the standard Windows Python installer.
-# Hardware access uses built-in PowerShell CIM/WMI (see windiag/support/windows.py).

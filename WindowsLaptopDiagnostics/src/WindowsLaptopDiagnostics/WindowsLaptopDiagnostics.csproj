@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>WindowsLaptopDiagnostics</RootNamespace>
+    <AssemblyName>WindowsLaptopDiagnostics</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WMI access for hardware/system queries (Windows Management Instrumentation). -->
+    <PackageReference Include="System.Management" Version="8.0.0" />
+
+    <!-- NAudio: WASAPI/MMAudio playback + capture. Raw COM interop for
+         channel-routed low-latency audio is disproportionately complex; this is
+         the de-facto standard, pure-.NET, Windows-only audio library. -->
+    <PackageReference Include="NAudio" Version="2.2.1" />
+
+    <!-- OpenCvSharp4: camera capture with real frame counting and measured FPS.
+         Media Foundation raw COM interop is disproportionately complex; this
+         provides reliable DirectShow/MF capture. Win exes only. -->
+    <PackageReference Include="OpenCvSharp4" Version="4.10.0.20240616" />
+    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.10.0.20240616" />
+    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.20240616" />
+  </ItemGroup>
+
+</Project>
