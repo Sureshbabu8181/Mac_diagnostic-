@@ -46,7 +46,7 @@ Deliverables:
 
 ---
 
-## Phase 2 — Input and display
+## Phase 2 — Input and display — ✅ COMPLETE
 
 **Depends on:** Phase 1.
 
@@ -63,6 +63,13 @@ Deliverables:
 **Acceptance:** pattern switching, full-screen entry/exit, multi-monitor selection, overlay
 auto-hide/re-show, Esc restore — all observed live.
 
+- [x] 15 patterns (solid / gradient / geometry / uniform)
+- [x] Real display-head enumeration with mode + position
+- [x] Full-screen session on the target display (`DisplaySessionWindow`)
+- [x] Auto-hiding overlay (3 s) re-shown on pointer/key activity
+- [x] Esc exits and restores the parent window; focus returned
+- [x] Manual dead/stuck-pixel confirmation recorded, never auto-claimed
+
 ### 2.2 Keyboard test
 - On-screen layout for the detected/selected layout (ANSI QWERTY, function row, nav cluster, numpad,
   modifiers).
@@ -74,6 +81,14 @@ auto-hide/re-show, Esc restore — all observed live.
 **Acceptance:** physical key presses highlight the correct on-screen key; coverage counter updates;
 focus loss clears stuck keys; no text is stored.
 
+- [x] 103-key ANSI layout (F-row, nav cluster, arrows, numpad) with relative key widths
+- [x] Window-level `PreviewKeyDown`/`PreviewKeyUp` hooked only while the page is loaded
+- [x] Untested → Pressed (cyan) → Tested (green) state machine; coverage % + counters
+- [x] Auto-repeat counted separately, never re-marks coverage
+- [x] Focus loss releases all pressed keys (no stuck visuals)
+- [x] Text inputs excluded so typed characters are never recorded
+- [x] Honest list of keys Windows/firmware consumes before apps see them
+
 ### 2.3 Touchpad & mouse
 - Live X/Y over a defined surface, movement trail, left/right click indicators and counts, drag and
   wheel checks, reset.
@@ -81,6 +96,13 @@ focus loss clears stuck keys; no text is stored.
   vs external mouse; when it cannot be determined, the result says *general mouse/pointer input*.
 
 **Acceptance:** coordinates track live, clicks counted, trail drawn, source label shown.
+
+- [x] Defined test surface with real pixel bounds shown on-screen
+- [x] Live X/Y, path length, move/left/right/wheel/drag counters
+- [x] Movement trail + current-position dot (non-hit-testable — see fix #9)
+- [x] Observed-checks list where every row is a real event, never assumed
+- [x] Source attribution from `Win32_PointingDevice`, labelled *general pointer input*
+      when the touchpad cannot be proven as the origin
 
 ---
 

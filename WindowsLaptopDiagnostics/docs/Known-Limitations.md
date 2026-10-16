@@ -24,7 +24,8 @@ is worked around with fabricated data — affected tests report `Unsupported`, `
 | 9 | This development session runs over a **remote display adapter** | Display test, GPU rendering, pointer-source detection | Full-screen patterns, refresh-rate readings and touchpad-vs-mouse discrimination must be validated on physical hardware |
 | 10 | Audio/camera endpoints may be absent or in use in a remote/headless session | Speakers, Microphone, Camera | Lists whatever endpoints exist; surfaces device-busy / access-denied errors instead of failing silently |
 | 11 | Running unelevated | SMART, some device details, driver repair actions | Reports `Permission Required`; never silently elevates |
-| 12 | .NET installed per-user (not `C:\Program Files\dotnet`) | Launching the framework-dependent EXE | Set `DOTNET_ROOT` (documented in README); Phase 7 self-contained publish removes this |
+| 12 | Per-user .NET install (not `C:\Program Files\dotnet`) | Launching the framework-dependent EXE | Set `DOTNET_ROOT` (documented in README); Phase 7 self-contained publish removes this |
+| 13 | Session runs over a remote display adapter, exposing a synthetic *Remote Desktop Mouse Device* | Touchpad & Mouse source attribution | Reports *general mouse/pointer input* — does **not** claim the built-in touchpad was proven; requires manual confirmation on physical hardware |
 
 ## Method limitations (by design, honesty rules)
 
@@ -42,6 +43,9 @@ is worked around with fabricated data — affected tests report `Unsupported`, `
 
 ## Not yet implemented
 
-Phases 2–7 of `IMPLEMENTATION_PLAN.md` (all 20 diagnostic modules, history/reports, packaging) are
-pending; their sidebar entries currently show an explicit *Not yet implemented* placeholder that
-performs no measurement and reports no result.
+Phases 3–7 of `IMPLEMENTATION_PLAN.md` (multimedia, performance/cooling, connectivity health,
+history/reports, packaging) are pending; their sidebar entries currently show an explicit
+*Not yet implemented* placeholder that performs no measurement and reports no result.
+
+Phases 1–2 (foundation + dashboard, display, keyboard, touchpad/mouse) are implemented and
+verified — see `PROJECT_STATUS.md`.

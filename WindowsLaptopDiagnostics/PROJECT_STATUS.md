@@ -11,7 +11,8 @@
 ## Current phase
 
 **Phase 1 — Foundation and working dashboard: COMPLETE and verified.**
-Phases 2–7 not started.
+**Phase 2 — Input and display: COMPLETE and verified.**
+Phases 3–7 not started.
 
 ---
 
@@ -33,6 +34,26 @@ Phases 2–7 not started.
 | Honest `Unsupported` / `Unavailable` states | ✅ | remote-display adapter VRAM = `Unavailable` |
 | Honest placeholder pages that perform no measurement | ✅ | screenshot: "Not yet implemented" badge |
 | `README.md`, `ARCHITECTURE.md`, `PROJECT_STATUS.md`, `IMPLEMENTATION_PLAN.md` | ✅ | written |
+
+### Phase 2 (complete)
+
+| Feature | Status | Evidence |
+| --- | --- | --- |
+| Multi-monitor enumeration (name, output, mode, position) | ✅ | real display head `\\.\DISPLAY49 1440x900 @32Hz` |
+| 15 display patterns (solid / gradient / geometry / uniform) | ✅ | screenshots: Black, Colour Ramp |
+| Full-screen session window on the target display | ✅ | `DisplaySessionWindow` launched and captured |
+| Auto-hiding translucent overlay (3 s, re-shows on activity) | ✅ | visible then hidden across captures |
+| Keyboard nav: ←/→ pattern, Space/P pause, R restart, Esc exit | ✅ | verified via UIA + SendKeys |
+| Esc exits and restores parent window state/focus | ✅ | foreground returned to main window after Esc |
+| Manual dead/stuck-pixel confirmation (no auto-claim) | ✅ | confirmation button + honest status text |
+| 103-key on-screen layout with Untested/Pressed/Tested states | ✅ | 5/103 keys highlighted after simulated presses |
+| Coverage %, press events, auto-repeat counters | ✅ | 5.8% / 5 presses observed |
+| Key events scoped to active page; text inputs excluded | ✅ | window hooks added on Loaded, removed on Unloaded |
+| Touchpad/mouse: live X/Y, trail, click/wheel/drag counters | ✅ | X207 Y220, Left 1, Right 1, Wheel 3, Drags 1 |
+| Defined test surface with real bounds (491×360) | ✅ | corner markers rendered |
+| Honest input-source attribution + device list | ✅ | "General mouse/pointer input"; Synaptics, HID mouse, RDP mouse |
+| Observed-checks list (real events only, never assumed) | ✅ | checkmarks driven by counters |
+| Global unhandled-exception handler + file logger | ✅ | added after crash analysis (see fix #4b) |
 
 ### Not implemented yet
 
@@ -91,7 +112,16 @@ Battery 95% · AC adapter · not charging
 | 5 | `You must install .NET Desktop Runtime` dialog | per-user SDK; `DOTNET_ROOT` unset for spawned processes | set `DOTNET_ROOT` + documented it |
 | 6 | Sidebar rendered empty | `ItemsSource` still bound to removed `FilteredNavItems` | bound to `NavView` |
 | 7 | Group headers invisible | custom `ContainerStyle` template omitted the header presenter | removed the override |
-| 8 | `MSB3027 exe locked` on rebuild | leftover instance holding the file | kill process before rebuild |
+| 8 | `MSB3027 exe locked` on rebuild | leftover instance holding the file | kill process before rebuild (automated in `build.ps1`) |
+| 9 | **Hard crash** `NullReferenceException` in `DisplayView.<OpenSession>b__6_0` during `Window.WmDestroy` (event 0xc000041d) | `OnUnloaded` nulled `_vm` **then** closed `_session`; the `Closed` handler dereferenced the nulled field | closure now captures the VM in a local + null-guards; unsubscribe before close; `DispatcherUnhandledException` handler added so no UI exception can kill the process silently |
+| 10 | `MC3024 Style already set` ×2 (Display, Keyboard views) | `Style="{StaticResource …}"` attribute **and** inline `<TextBlock.Style>` on one element | removed the attribute, kept the triggers |
+| 11 | `CS0123 OnSessionRequested` / `Action` mismatch | handler had `(object, EventArgs)` signature for an `Action` event | changed to parameterless |
+| 12 | `CS9135 '_vm is vm'` | pattern variable used where a constant was expected | `ReferenceEquals(_vm, vm)` |
+| 13 | `CS0747`/`CS0117 Canvas.Top` in object initializer | `Canvas.Left/Top` are attached properties | `MakeRect()` helper calls `Canvas.SetLeft/SetTop` |
+| 14 | Tuple names lost (`RefreshHz` missing) | element name not inferable from a method-call expression | explicit `RefreshHz:` naming |
+| 15 | `CS0246 'DisplayHead' not found in Services` | `DisplayHead` is nested inside the `WindowsApi` class | qualified as `WindowsApi.DisplayHead` |
+| 16 | Sidebar group headers invisible / `ItemsSource` empty | (Phase 1) stale binding + template override | (Phase 1) bound to `NavView`, removed override |
+| 17 | **Runaway `MouseMove` loop** — ~2 200 phantom moves in 400 ms with a stationary cursor; click/wheel events never processed (`Left/Right/Wheel` stayed 0) | the trail **dot is drawn under the cursor**; repaint → hit-test target changes → WPF re-raises `MouseMove` → repaint… flooding the UI thread and starving button messages | `IsHitTestVisible="False"` on `TrailCanvas`; verified idle delta is now **0** and Left/Right/Wheel all count |
 
 ---
 
@@ -106,12 +136,17 @@ See [docs/Known-Limitations.md](docs/Known-Limitations.md). Headline items:
 3. **GPU telemetry** (utilization/temperature/power) is often unavailable for Intel iGPU under WDPF
    → reported `Unsupported`.
 4. **This session runs over a remote display adapter**, so the display test and GPU rendering test
-   cannot be fully verified here; they will be validated on physical hardware.
+   cannot be fully verified here; they will be validated on physical hardware. RDP also exposes a
+   synthetic *Remote Desktop Mouse Device*, so touchpad-vs-mouse attribution honestly resolves to
+   *general mouse/pointer input* here.
 5. **Camera/microphone/speakers** can be built and error-path-tested here, but acoustic/visual
    quality cannot be verified without a human at the machine.
-6. **Per-user .NET install** means launching the EXE requires `DOTNET_ROOT`; a self-contained
+6. **Keyboard/mouse coverage** is verified by injecting real Windows input events — that proves the
+   capture path works, not that every physical key or the built-in touchpad works. Coverage % and
+   user confirmation are reported separately, never merged into an automatic pass.
+7. **Per-user .NET install** means launching the EXE requires `DOTNET_ROOT`; a self-contained
    publish (Phase 7) removes that requirement.
-7. **Non-administrator context**: some SMART fields and device details require elevation → reported
+8. **Non-administrator context**: some SMART fields and device details require elevation → reported
    `Permission Required`.
 
 ---
@@ -121,11 +156,11 @@ See [docs/Known-Limitations.md](docs/Known-Limitations.md). Headline items:
 | Phase | Scope | State |
 | --- | --- | --- |
 | 1 | Foundation + dashboard | ✅ done & verified |
-| 2 | Display, keyboard, touchpad/mouse | ⬜ not started |
+| 2 | Display, keyboard, touchpad/mouse | ✅ done & verified |
 | 3 | Speakers, microphone, camera | ⬜ not started |
 | 4 | CPU/GPU/RAM stress, fan, thermal | ⬜ not started |
 | 5 | Storage, battery, network, Bluetooth, USB, system/Windows health | ⬜ not started |
 | 6 | Automatic diagnostics, history, CSV/HTML/PDF | ⬜ not started |
 | 7 | Hardening, profiling, packaging, final docs | ⬜ not started |
 
-**Never claimed:** the application is not finished. Only Phase 1 is implemented and verified.
+**Never claimed:** the application is not finished. Only Phases 1–2 are implemented and verified.

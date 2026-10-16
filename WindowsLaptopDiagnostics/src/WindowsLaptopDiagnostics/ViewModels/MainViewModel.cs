@@ -207,6 +207,9 @@ public sealed class MainViewModel : ObservableObject
         var pages = new Dictionary<string, PageViewModelBase>(StringComparer.OrdinalIgnoreCase)
         {
             ["overview"] = new OverviewViewModel(_device, this),
+            ["display"]  = new DisplayViewModel(),
+            ["keyboard"] = new KeyboardViewModel(),
+            ["touchpad"] = new TouchpadViewModel(),
         };
 
         foreach (var d in NavDefinitions)

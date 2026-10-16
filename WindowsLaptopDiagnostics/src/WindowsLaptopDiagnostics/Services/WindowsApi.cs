@@ -385,6 +385,109 @@ public static class WindowsApi
     }
 
     // ------------------------------------------------------------------ //
+    // Display devices (multi-monitor awareness)
+    // ------------------------------------------------------------------ //
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    private struct DISPLAY_DEVICE
+    {
+        public int cb;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string DeviceName;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string DeviceString;
+        public int StateFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string DeviceId;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string DeviceKey;
+    }
+
+    private const int DISPLAY_DEVICE_ACTIVE = 0x1;
+    private const int DISPLAY_DEVICE_PRIMARY_DEVICE = 0x4;
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    private static extern bool EnumDisplayDevices(
+        string? lpDevice, uint iDevNum, ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);
+
+    /// <summary>An attached display head (monitor) with its current mode and position.</summary>
+    public sealed record DisplayHead(
+        int Index,
+        string DeviceName,     // e.g. \\.\DISPLAY1
+        string FriendlyName,   // monitor name when exposed
+        bool IsPrimary,
+        int Width,
+        int Height,
+        int RefreshHz,
+        int X,
+        int Y);
+
+    /// <summary>
+    /// Enumerate active display heads. FriendlyName falls back to the adapter
+    /// name when the monitor itself is not exposed (never fabricated).
+    /// </summary>
+    public static List<DisplayHead> EnumerateDisplays()
+    {
+        var heads = new List<DisplayHead>();
+        for (uint i = 0; ; i++)
+        {
+            var dd = new DISPLAY_DEVICE { cb = Marshal.SizeOf<DISPLAY_DEVICE>() };
+            if (!EnumDisplayDevices(null, i, ref dd, 0)) break;
+            if ((dd.StateFlags & DISPLAY_DEVICE_ACTIVE) == 0) continue;
+
+            // Second call resolves the monitor attached to this output.
+            var monitor = new DISPLAY_DEVICE { cb = Marshal.SizeOf<DISPLAY_DEVICE>() };
+            string friendly = dd.DeviceString;
+            if (EnumDisplayDevices(dd.DeviceName, 0, ref monitor, 0) &&
+                !string.IsNullOrWhiteSpace(monitor.DeviceString))
+            {
+                friendly = monitor.DeviceString;
+            }
+            // Never show a blank label: fall back to the adapter/output name
+            // (a real identifier, not an invented name).
+            if (string.IsNullOrWhiteSpace(friendly)) friendly = dd.DeviceName;
+
+            var dm = new DEVMODE { dmSize = (short)Marshal.SizeOf<DEVMODE>() };
+            int w = 0, h = 0, hz = 0, x = 0, y = 0;
+            if (EnumDisplaySettings(dd.DeviceName, ENUM_CURRENT_SETTINGS, ref dm))
+            {
+                w = dm.dmPelsWidth; h = dm.dmPelsHeight; hz = dm.dmDisplayFrequency;
+                x = dm.dmPositionX; y = dm.dmPositionY;
+            }
+
+            heads.Add(new DisplayHead(
+                Index: heads.Count,
+                DeviceName: dd.DeviceName,
+                FriendlyName: friendly.Trim(),
+                IsPrimary: (dd.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE) != 0,
+                Width: w, Height: h, RefreshHz: hz,
+                X: x, Y: y));
+        }
+        return heads;
+    }
+
+    /// <summary>All supported video modes for a display head (width, height, refresh).</summary>
+    public static List<(int Width, int Height, int RefreshHz)> SupportedDisplayModes(string deviceName)
+    {
+        var modes = new List<(int Width, int Height, int RefreshHz)>();
+        var dm = new DEVMODE { dmSize = (short)Marshal.SizeOf<DEVMODE>() };
+        for (int i = 0; EnumDisplaySettings(deviceName, i, ref dm); i++)
+        {
+            var t = (dm.dmPelsWidth, dm.dmPelsHeight, dm.dmDisplayFrequency);
+            if (!modes.Contains(t)) modes.Add(t);
+            dm = new DEVMODE { dmSize = (short)Marshal.SizeOf<DEVMODE>() };
+        }
+        return modes;
+    }
+
+    // ------------------------------------------------------------------ //
+    // Pointing devices (touchpad vs external mouse discrimination)
+    // ------------------------------------------------------------------ //
+
+    public static List<Dictionary<string, object?>> PointingDevices() =>
+        WmiRows("Win32_PointingDevice", "Name", "Manufacturer", "PNPDeviceID", "DeviceID", "Status");
+
+    // ------------------------------------------------------------------ //
     // Small parsing helpers
     // ------------------------------------------------------------------ //
 
