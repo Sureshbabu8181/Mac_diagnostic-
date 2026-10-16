@@ -58,3 +58,37 @@ public sealed class BoolToVisibilityConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         Binding.DoNothing;
 }
+
+/// <summary>Visible when the bound string is non-empty; collapsed when null or empty.</summary>
+public sealed class EmptyToVisibilityConverter : IValueConverter
+{
+    public bool Invert { get; set; }
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        bool hasText = value is string s && !string.IsNullOrWhiteSpace(s);
+        if (Invert) hasText = !hasText;
+        return hasText ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        Binding.DoNothing;
+}
+
+/// <summary>
+/// Compares a selected value against an item's own value so a list can show
+/// which item is current. One-way only — WPF does not allow a Binding inside
+/// ConverterParameter, and ConvertBack cannot identify which item reported the
+/// change, so selection is driven from the view's Checked handler instead.
+/// </summary>
+public sealed class ValueEqualsConverter : IMultiValueConverter
+{
+    public object Convert(object?[] values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (values.Length < 2 || values[0] is null || values[1] is null) return false;
+        return Equals(values[0], values[1]);
+    }
+
+    public object?[] ConvertBack(object value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}

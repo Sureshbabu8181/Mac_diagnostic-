@@ -210,6 +210,9 @@ public sealed class MainViewModel : ObservableObject
             ["display"]  = new DisplayViewModel(),
             ["keyboard"] = new KeyboardViewModel(),
             ["touchpad"] = new TouchpadViewModel(),
+            ["speakers"] = new SpeakersViewModel(),
+            ["microphone"] = new MicrophoneViewModel(),
+            ["camera"]   = new CameraViewModel(),
         };
 
         foreach (var d in NavDefinitions)

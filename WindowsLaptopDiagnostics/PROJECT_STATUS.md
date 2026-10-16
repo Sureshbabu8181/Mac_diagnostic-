@@ -12,7 +12,8 @@
 
 **Phase 1 — Foundation and working dashboard: COMPLETE and verified.**
 **Phase 2 — Input and display: COMPLETE and verified.**
-Phases 3–7 not started.
+**Phase 3 — Multimedia (speakers, microphone, camera): COMPLETE and verified.**
+Phases 4–7 not started.
 
 ---
 
@@ -55,11 +56,36 @@ Phases 3–7 not started.
 | Observed-checks list (real events only, never assumed) | ✅ | checkmarks driven by counters |
 | Global unhandled-exception handler + file logger | ✅ | added after crash analysis (see fix #4b) |
 
+### Phase 3 (complete)
+
+| Feature | Status | Evidence |
+| --- | --- | --- |
+| Render endpoint enumeration (name, volume, mute, channels, default) | ✅ | `Remote Audio · Volume 100% · Windows default · 2 ch` |
+| Channel-routed tones: Left / Right / Stereo / Mono | ✅ | playback reported `Playing Left route on Remote Audio` |
+| Distinct pitches per channel (440 / 880 / 660 Hz) | ✅ | route text rendered correctly |
+| Immediate Stop; route-by-route result recording | ✅ | `Tested 1 of 4 routes` after one confirmation |
+| Route descriptions derived from the device's real channel count | ✅ | mono text reads `every channel (2)` |
+| Capture endpoint enumeration (WASAPI, same API used to open) | ✅ | correctly reports **0 endpoints** under RDP |
+| Honest no-device state: Start disabled, no invented readings | ✅ | `Start enabled: False`; peak shows `-60.0 dBFS` floor |
+| Live level meter, waveform, clipping detection, elapsed timer | ✅ | code verified; needs a real microphone (see limits) |
+| Record → playback → delete of a real WAV | ✅ | header written then cleaned up on failed capture |
+| Camera probe via MSMF with DirectShow fallback | ✅ | `1 camera device(s) opened successfully. Backend MSMF` |
+| Live preview, real frame count, measured (not advertised) FPS | ✅ | `382 frames · 29.8 fps measured` vs `advertised @ 30 fps` |
+| Actual capture resolution read from delivered frames | ✅ | `640×480` |
+| Camera released on Stop / page exit | ✅ | `Stopped. 197 frames delivered.` |
+| Manual picture confirmation left unchecked until the user acts | ○ | `○ Technician confirmed a clear picture` observed in UIA |
+
 ### Not implemented yet
 
-All 20 diagnostic modules (Phases 2–7): display, keyboard, touchpad, speakers, microphone, camera,
-CPU, GPU, RAM, fan, thermal, storage health, battery, network, Bluetooth, USB, system info,
-Windows health, automatic diagnostics, history/reports. These currently render honest placeholders.
+Phases 4-7: CPU/GPU/RAM stress, fan and thermal, storage health, battery, network,
+Bluetooth, USB, system/Windows health, automatic diagnostics, history/reports. These
+currently render an explicit *Not yet implemented* placeholder that measures nothing.
+
+Note on Phase 3: **speakers** and **camera** were exercised against real endpoints in this
+session (playback reported `Playing Left route on Remote Audio`; camera delivered 382 frames
+at 29.8 fps measured). The **microphone** path could not be exercised end-to-end because this
+session exposes no capture endpoint - it reports that honestly and disables Start rather than
+fabricating a level. See `docs/Known-Limitations.md` rows 14, 24-26.
 
 ---
 
@@ -122,6 +148,13 @@ Battery 95% · AC adapter · not charging
 | 15 | `CS0246 'DisplayHead' not found in Services` | `DisplayHead` is nested inside the `WindowsApi` class | qualified as `WindowsApi.DisplayHead` |
 | 16 | Sidebar group headers invisible / `ItemsSource` empty | (Phase 1) stale binding + template override | (Phase 1) bound to `NavView`, removed override |
 | 17 | **Runaway `MouseMove` loop** — ~2 200 phantom moves in 400 ms with a stationary cursor; click/wheel events never processed (`Left/Right/Wheel` stayed 0) | the trail **dot is drawn under the cursor**; repaint → hit-test target changes → WPF re-raises `MouseMove` → repaint… flooding the UI thread and starving button messages | `IsHitTestVisible="False"` on `TrailCanvas`; verified idle delta is now **0** and Left/Right/Wheel all count |
+| 18 | MME reports 0 capture devices (`waveInGetNumDevs = 0`) yet WASAPI has an active *Microphone Array* — mic start threw `BadDeviceId calling waveInOpen` | enumeration used MME (`WaveInEvent.DeviceCount`) while the endpoint list came from Core Audio | capture enumeration **and** capture now both use WASAPI (`MMDeviceEnumerator` + `WasapiCapture`) |
+| 19 | Camera preview stayed black with `Frames delivered = 0` | `CameraSession.Start()` only *created* the read thread | it now starts the thread; verified 382 frames / 29.8 fps |
+| 20 | Camera `Actual capture resolution` showed `—` on a Stop→Start cycle | resolution was only written when the `WriteableBitmap` was created, and the bitmap survives a restart | resolution now follows the incoming frame dimensions; verified `640×480` after restart |
+| 21 | Microphone `Peak` displayed `0.0 dBFS` (full scale) with no capture running | the property defaulted to 0 | defaults to the −60 dBFS floor; verified `Peak: -60.0 dBFS` |
+| 22 | `Start capture` stayed enabled with no endpoint selected | command guard ignored the selection | guard now requires a real endpoint; verified `Start enabled: False` |
+| 23 | A failed capture left a 46-byte header-only `.wav` that looked like a real recording | the file was created before capture started and kept on the error path | the header-only file is deleted on a failed start |
+| 24 | `AudioService.cs` rendered mojibake (`right — different pitches`) | a PowerShell `Get-Content`/`Set-Content` truncation re-encoded UTF-8 as ANSI | damaged sequences repaired; remaining non-ASCII verified as intentional |
 
 ---
 
@@ -157,10 +190,10 @@ See [docs/Known-Limitations.md](docs/Known-Limitations.md). Headline items:
 | --- | --- | --- |
 | 1 | Foundation + dashboard | ✅ done & verified |
 | 2 | Display, keyboard, touchpad/mouse | ✅ done & verified |
-| 3 | Speakers, microphone, camera | ⬜ not started |
+| 3 | Speakers, microphone, camera | ✅ done & verified |
 | 4 | CPU/GPU/RAM stress, fan, thermal | ⬜ not started |
 | 5 | Storage, battery, network, Bluetooth, USB, system/Windows health | ⬜ not started |
 | 6 | Automatic diagnostics, history, CSV/HTML/PDF | ⬜ not started |
 | 7 | Hardening, profiling, packaging, final docs | ⬜ not started |
 
-**Never claimed:** the application is not finished. Only Phases 1–2 are implemented and verified.
+**Never claimed:** the application is not finished. Only Phases 1-3 are implemented and verified.

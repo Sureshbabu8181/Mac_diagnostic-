@@ -1,0 +1,121 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.SpeakersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:WindowsLaptopDiagnostics.ViewModels">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,28">
+
+            <TextBlock Text="Speakers &amp; Headphones" Style="{StaticResource TitleText}" />
+            <TextBlock Text="Channel-routed tones with immediate stop — a route passes only when you confirm you heard it"
+                       Style="{StaticResource MutedText}" Margin="0,2,0,14" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="340" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Endpoint + routing -->
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Output endpoint" Style="{StaticResource CardTitle}" Margin="0,0,0,8" />
+                        <ComboBox ItemsSource="{Binding Endpoints}"
+                                  SelectedItem="{Binding SelectedEndpoint}"
+                                  DisplayMemberPath="Name"
+                                  HorizontalAlignment="Stretch" />
+                        <TextBlock Text="{Binding DeviceInfo}" Style="{StaticResource MutedText}" Margin="0,6,0,0" />
+
+                        <TextBlock Text="Route to play" Style="{StaticResource SectionHeader}" Margin="0,16,0,6" />
+                        <ItemsControl ItemsSource="{Binding Routes}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <RadioButton Content="{Binding}" GroupName="route" Margin="0,2"
+                                                 Checked="OnRouteChecked">
+                                        <RadioButton.IsChecked>
+                                            <MultiBinding Converter="{StaticResource RouteEquals}" Mode="OneWay">
+                                                <Binding Path="DataContext.SelectedRoute"
+                                                         RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                                                <Binding />
+                                            </MultiBinding>
+                                        </RadioButton.IsChecked>
+                                    </RadioButton>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <ItemsControl ItemsSource="{Binding RouteDescriptions}" Margin="0,10,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Style="{StaticResource MutedText}" Margin="0,3"
+                                               TextWrapping="Wrap" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Separator Background="{StaticResource BorderBrush}" Margin="0,14,0,10" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="▶  Play selected route" Style="{StaticResource AccentButton}"
+                                    Command="{Binding PlayCommand}" Padding="14,7" />
+                            <Button Content="Stop" Style="{StaticResource GhostButton}" Margin="10,0,0,0"
+                                    Command="{Binding StopCommand}" Padding="14,7" />
+                            <Button Content="Refresh" Style="{StaticResource GhostButton}" Margin="10,0,0,0"
+                                    Command="{Binding RefreshCommand}" Padding="14,7" />
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}" Margin="0,12,0,0"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Error}" Foreground="{StaticResource FailedBrush}"
+                                   Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Visibility="{Binding Error, Converter={StaticResource EmptyToVisibility}}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Per-route results -->
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Route results" Style="{StaticResource CardTitle}" Margin="0,0,0,8" />
+                            <TextBlock Text="Record what you actually heard while the tone was playing. A route with no observation stays untested."
+                                       Style="{StaticResource MutedText}" Margin="0,0,0,10" TextWrapping="Wrap" />
+                            <ItemsControl ItemsSource="{Binding Checklist}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" Style="{StaticResource BodyText}" Margin="0,3"
+                                                   FontFamily="Consolas" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                <Button Content="Heard as described" Style="{StaticResource GhostButton}"
+                                        Command="{Binding HeardCommand}" />
+                                <Button Content="Not heard" Style="{StaticResource GhostButton}" Margin="8,0,0,0"
+                                        Command="{Binding NotHeardCommand}" />
+                            </StackPanel>
+
+                            <Separator Background="{StaticResource BorderBrush}" Margin="0,14,0,10" />
+                            <TextBlock Text="{Binding ResultSummary}" Style="{StaticResource BodyText}"
+                                       FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <Button Content="Reset all routes" Style="{StaticResource GhostButton}"
+                                    HorizontalAlignment="Left" Margin="0,10,0,0"
+                                    Command="{Binding ResetCommand}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="How this is judged" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Text="Windows accepted a stream to the endpoint — that is all the software can prove by itself. Silence can mean muted output, a low master volume, a headset taking over the default route, or a failed driver. Only your confirmation of a route turns it into a result, and every route is judged separately."
+                                       Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -15,6 +15,9 @@
             <inf:BoolToVisibilityConverter x:Key="BoolToVis" />
             <inf:BoolToVisibilityConverter x:Key="BoolToVisInverted" Invert="True" />
             <inf:KeyWidthConverter x:Key="KeyWidth" />
+            <inf:EmptyToVisibilityConverter x:Key="EmptyToVisibility" />
+            <inf:EmptyToVisibilityConverter x:Key="EmptyToVisibilityInverted" Invert="True" />
+            <inf:ValueEqualsConverter x:Key="RouteEquals" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

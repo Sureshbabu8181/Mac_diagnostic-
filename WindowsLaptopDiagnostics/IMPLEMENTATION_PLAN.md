@@ -106,7 +106,7 @@ focus loss clears stuck keys; no text is stored.
 
 ---
 
-## Phase 3 — Multimedia
+## Phase 3 — Multimedia — ✅ COMPLETE
 
 **Depends on:** NAudio, OpenCvSharp4 (added in Phase 1 csproj).
 
@@ -115,18 +115,54 @@ focus loss clears stuck keys; no text is stored.
 - Left / right / stereo / mono tones with correct channel routing where supported, **immediate Stop**.
 - `Passed` only after explicit user confirmation of what was audible.
 
+**Done:** Core Audio endpoints with live volume/mute/channel count/default flag; tones generated in
+the device's *actual* mix format (float32 or 16-bit PCM, whichever it supports); distinct pitches
+per channel (440/880/660 Hz); single-channel endpoints honestly refuse right/stereo; per-route
+"heard / not heard" recorded separately and never merged into an automatic pass.
+
 ### 3.2 Microphone
 - Input-device picker, sample rate/channel info, live waveform + level meter, clipping indicator.
 - Start/Stop/Play/Delete/Reset, elapsed duration, explicit user action only.
 - Capture stops on page exit; temp recordings cleaned on delete/exit.
+
+**Done:** capture endpoints enumerated via WASAPI (the same API used to open them — MME reports 0
+devices on this machine); the format actually granted is displayed and may differ from the request;
+level/peak in dBFS from real samples, waveform envelope, clipping flag, elapsed timer; recording is
+always written as 16-bit PCM so playback never depends on the device format; Start is disabled when
+no endpoint exists; failed capture deletes its header-only file.
 
 ### 3.3 Camera
 - Enumerate cameras, device picker, live preview, **real** frame count, **measured** FPS over a
   defined window, actual capture resolution, Start/Stop/Restart.
 - Access-conflict and device-busy errors surfaced; device released on stop/exit.
 
+**Done:** MSMF probe with DirectShow fallback; BGRA frame conversion on a background thread into a
+`WriteableBitmap`; frame count and FPS measured over a rolling 2-second window from frames actually
+delivered (never taken from the advertised rate); resolution read from the incoming frames; access
+conflicts surfaced as errors; device released on Stop and on page exit.
+
 **Acceptance:** each device lists real endpoints; stop actions release the device immediately;
 measured FPS changes with load rather than being constant.
+
+**Verified:** endpoint `Remote Audio` with `Volume 100% · Windows default · 2 ch`; playback reported
+`Playing Left route on Remote Audio`; `Tested 1 of 4 routes` after one confirmation; camera `382
+frames · 29.8 fps measured` against `advertised @ 30 fps`, `640×480`, `Stopped. 197 frames
+delivered.`; microphone honestly reports `Windows reports no active audio capture endpoint` with
+`Start` disabled and peak at the −60 dBFS floor.
+
+### 3.4 Defects found while verifying
+
+- MME (`waveInGetNumDevs`) reports 0 capture devices while WASAPI reports one — enumeration and
+  capture used different APIs → both moved to WASAPI.
+- Camera read thread was created but never `Start()`ed → preview stayed black while the counter
+  silently stayed at 0.
+- Camera resolution was only written when the bitmap was *created*, so a Stop→Start cycle showed
+  `—`; it now follows the incoming frame dimensions.
+- Microphone peak defaulted to `0.0 dBFS` (full scale) with no capture running → starts at −60.
+- `Start` stayed enabled with no endpoint selected → command now requires a real endpoint.
+- A failed capture left a 46-byte header-only WAV that looked like a real recording → deleted.
+- `AudioService.cs` UTF-8 was corrupted to ANSI by a shell truncation - the em dash in the Stereo
+  text rendered as three Latin-1 characters; repaired and the remaining non-ASCII verified as intentional.
 
 ---
 
