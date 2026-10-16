@@ -1,9 +1,12 @@
-node_modules/
-dist/
-build/
-.env
-*.log
-.DS_Store
-dist/
-*.exe
-node_modules/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Local diagnostic history / reports (never commit)
+Reports/
+sessions.json
+technicians.json
+*.tmp
