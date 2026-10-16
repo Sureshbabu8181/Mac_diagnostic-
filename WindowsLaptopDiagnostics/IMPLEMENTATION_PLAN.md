@@ -231,7 +231,7 @@ Read before implementation so honesty is grounded in fact rather than assumption
 
 ---
 
-## Phase 5 — Additional hardware
+## Phase 5 - Additional hardware - ✅ COMPLETE
 
 - **Storage:** inventory, interface, capacity, volume usage, SMART/health read-only, read-only
   accessibility check. No writes, no formats, no destructive patterns.
@@ -239,13 +239,70 @@ Read before implementation so honesty is grounded in fact rather than assumption
   capacities are exposed; otherwise `Unavailable`.
 - **Network:** adapter state, IP/gateway/DNS, gateway reachability, optional latency/internet probe
   on request, issue localised to adapter vs router vs DNS vs internet where evidence permits.
-- **Bluetooth:** adapter presence, discovery via WinRT when permitted.
+- **Bluetooth:** adapter presence; discovery requirements stated explicitly and gated on permission.
 - **USB:** controller/device enumeration + guided known-good-device manual check; detection evidence
   reported separately from unresolved manual checks.
 - **System / Windows health:** inventory, Windows build, driver problems
   (`Win32_PnPEntity.ConfigManagerErrorCode`), read-only servicing state, admin-needed items labelled.
 
 **Acceptance:** each page returns real data or an explicit `Unsupported` with a reason.
+
+### 5.1 Acceptance - measured evidence
+
+| Criterion | Result |
+| --- | --- |
+| Every page returns real data or an explicit gap with a reason | ✅ all 7 pages render live Windows reads; no page shows a placeholder |
+| Storage is strictly read-only | ✅ the only probe opens existing data for reading; no file created, altered or deleted |
+| SMART is never fabricated, and never needlessly hidden | ✅ reports `OK`, while stating that raw attributes are not exposed through WMI |
+| Wear only when both capacities exist | ✅ design 45000 mWh + full 32140 mWh → **28.6 %** measured |
+| The wear note cannot contradict the numbers beside it | ✅ note/title generated from the reading (fixed a static claim of *unavailable*) |
+| Opening the Network page causes no outbound traffic | ✅ status reads *No traffic has been sent yet*; probes require an explicit opt-in |
+| Fault is localised to the smallest scope the evidence supports | ✅ staged adapter → gateway → DNS → internet, stopping at the first failure |
+| Manual checks never auto-pass | ✅ at 0 ticks: *No manual check confirmed yet - nothing is treated as passing* |
+| Detection evidence reported separately from manual checks | ✅ two summaries, never merged |
+| `Unavailable` used instead of invented values | ✅ every unreadable field says so and names the source of the refusal |
+| Admin-needed remediation labelled, never executed | ✅ *Read-only - nothing is installed or repaired here* |
+| UI never freezes | ✅ all 7 pages read on a background task and marshal to the dispatcher |
+
+### 5.2 What this machine actually exposes
+
+Read before implementation so honesty is grounded in fact rather than assumption:
+
+| Item | Source | State here |
+| --- | --- | --- |
+| Disk status / SMART summary | `Win32_DiskDrive` | ✅ available - `Status = OK` (**`PredictFailure` is not queryable**) |
+| Volume usage + read access | `DriveInfo` / directory enumeration | ✅ available - `C: 14.7 % used`, listing readable |
+| Battery charge / AC / charging | `Win32_Battery`, power status | ✅ available - 95 %, on AC, not charging |
+| Design capacity | `root\wmi` `BatteryStaticData` | ✅ available - **45000 mWh** (fails through CIM, succeeds through `ManagementObjectSearcher`) |
+| Full-charge capacity | `root\wmi` `BatteryFullChargedCapacity` | ✅ available - **32140 mWh** |
+| Adapter addressing | `Win32_NetworkAdapterConfiguration` | ✅ available - AX200, IP/GW/DNS (**`NetConnectionStatus` is not a property of this class**) |
+| Install date | `Win32_OperatingSystem.InstallDate` | ✅ available as a **DMTF** timestamp, not Unix seconds |
+| Bluetooth radio | `Win32_PnPEntity` `PNPClass='Bluetooth'` | ✅ Intel Wireless Bluetooth radio + 3 enumerator nodes |
+| USB devices/controllers | `Win32_PnPEntity` (`PNPDeviceID` starts `USB`) | ✅ 7 entries, all healthy |
+| Device problem codes | `Win32_PnPEntity.ConfigManagerErrorCode` | ✅ 197 devices, all `0` |
+| Installed updates | `Win32_QuickFixEngineering` | ✅ 7 reported (an empty list would *not* mean unpatched) |
+
+### 5.3 Defects found while verifying
+
+- **SMART reported `Unavailable` while the same card showed Windows status `OK`.** A combined
+  `SELECT Status,PredictFailure` fails as *Invalid query* on this system, so the readable value was
+  lost with the unreadable one - the same failure shape as the network adapter below. The two
+  properties are now queried separately.
+- **The Network page claimed *No IP-enabled adapter reported by Windows*** even though an adapter
+  held an IP. `NetConnectionStatus` belongs to `Win32_NetworkAdapter`; including it invalidated the
+  entire `SELECT` and the exception was swallowed into an empty list.
+- **Windows install date read `Unavailable`.** WMI returns `InstallDate` as a DMTF timestamp
+  (`20250523162303.000000+330`), but it was parsed as Unix seconds - now read through
+  `ManagementDateTimeConverter` and shown as `2025-05-23`.
+- **The battery page contradicted itself:** a static card asserted *design capacity is not exposed
+  on this machine* while the row beside it read `Design 45000 mWh` and `wear 28.6 %`. The card's
+  title and text are now derived from the live reading, so the two can no longer disagree.
+- **Build breaks:** `HttpClient` needed `using System.Net.Http`; `DateTimeOffset` exposes
+  `LocalDateTime` as a property, not a method; `RelayCommand<T>` does not exist (probes use
+  `AsyncRelayCommand`); new pattern variables `d`/`f` collided with ones bound earlier in the same
+  scope.
+- **USB checklist text clipped** at the panel edge - `CheckBox` content does not wrap, so the text
+  moved into an inner `TextBlock` with `TextWrapping="Wrap"`.
 
 ---
 

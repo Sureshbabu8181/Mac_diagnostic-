@@ -13,8 +13,8 @@ is worked around with fabricated data — affected tests report `Unsupported`, `
 | 2 | Consumer laptops rarely expose a documented fan-control interface | Fan maximum-speed test | Runs a cooling-observation test instead; never writes arbitrary EC registers or pretends control was performed |
 | 3 | Intel iGPU typically has no vendor telemetry (no NVML/ADL) reachable from user mode | GPU utilization/temperature/clock/power | Reports `Unsupported`; the rendering workload and adapter inventory still work |
 | 4 | `Win32_VideoController.AdapterRAM` is a 32-bit field, so >4 GB VRAM reads wrong | GPU VRAM | Value flagged as unreliable/`Unavailable` rather than shown as fact |
-| 5 | `Win32_Battery` design/full-charge capacity is absent on many modern laptops (UCEFI/HID battery) | Battery wear % | Reports charge and AC state; wear shown as `Unavailable` — never inferred from charge level |
-| 6 | SMART data access needs administrator rights for some identifiers | SSD/HDD health | Reports `Permission Required` and lists which fields need elevation |
+| 5 | `Win32_Battery` design/full-charge capacity is absent on many modern laptops (UCEFI/HID battery) | Battery wear % | Reports charge and AC state; wear shown as `Unavailable` — never inferred from charge level. **Both capacities were readable on this machine** (45000 / 32140 mWh → 28.6 %), so the computable path is the one verified here |
+| 6 | SMART data access needs administrator rights for some identifiers, and WMI exposes only an OS-level summary — raw attributes (reallocated sectors, media errors, SSD wear, temperature) are not exposed at all | SSD/HDD health | Reports `Permission Required` when Windows refuses a query, and otherwise labels the result explicitly as the OS summary rather than as a drive health verdict |
 | 7 | Windows on some OEM firmware does not expose per-port USB topology | USB port test | Reports which controllers/devices are enumerated; physical per-port pass requires the guided manual check |
 | 8 | Bluetooth discovery requires location permissions on Windows 10/11 | Bluetooth | Reports `Permission Required` when the prompt was denied |
 
@@ -30,6 +30,9 @@ is worked around with fabricated data — affected tests report `Unsupported`, `
 | 14 | This RDP session exposes **no audio capture endpoint** (WASAPI `EnumerateAudioEndPoints(DataFlow.Capture)` returns none; `waveInGetNumDevs = 0`), though the host has an active *Microphone Array* | Microphone Test | Page reports *no active audio capture endpoint*, disables Start, and shows the -60 dBFS floor instead of inventing a level |
 | 15 | This machine's firmware exposes **no fan tachometer**: `Win32_Fan` returns 0 rows, so there is no RPM reading of any kind | Fan & Cooling, Temperature & Sensors | Fan speed reported `Unsupported` with that reason; the 10-second observation reports load and clock and states plainly that cooling effectiveness cannot be proven without a tachometer or a temperature source |
 | 16 | The RDP session exposes no *thermal zone* to a non-administrator, and the remote display adapter has no hardware counters | CPU stress thermal limit, Temperature & Sensors | Thermal limit reported **not armed**; the indirect adapter's GPU row reads `Unsupported` instead of borrowing another adapter's numbers |
+| 16b | **Bluetooth pairing and discovery were not implemented in Phase 5** — adapter/radio presence is read from the Windows stack, but no WinRT `DeviceWatcher` pairing flow is wired up | Bluetooth | The page reports radio presence and per-node problem codes only, and states the permission requirement in words rather than implying a scan took place. Pairing remains a manual step in Windows Settings |
+| 16c | **ICMP or HTTP can be filtered independently**, so a failed probe is not proof of a broken adapter | Wi-Fi & Network | Every stage stops at the first failure and prints the evidence gathered before it, so the verdict names the smallest *evidenced* scope. The wording is *the fault is upstream of this network*, never *your internet is broken* |
+| 16d | **The internet/DNS probes are off by default** and only run when a technician enables them | Wi-Fi & Network | Opening the page sends no outbound traffic; only local adapter configuration is read until an option is ticked |
 
 ## Method limitations (by design, honesty rules)
 
@@ -51,15 +54,21 @@ is worked around with fabricated data — affected tests report `Unsupported`, `
 | 30 | **The GPU workload exercises the composition pipeline, not a compute shader** | It animates a dense field of primitives through WPF's hardware-accelerated path. Utilisation is measured from Windows GPU counters rather than assumed (0 % idle → 4 % under the load), but this is not a vendor 3D benchmark and cannot be described as pushing the iGPU to its thermal or power limit |
 | 31 | **An application-level stress test cannot provide thermal protection it does not have** | With no readable temperature the thermal limit is reported as **not armed**, not implied. The run remains bounded by its duration and by a cancel that returned load from 89 % to 2.8 % within 0.6 s, but the app does not claim to have protected the machine thermally |
 | 32 | **The cooling observation cannot prove the cooling system works** | With no tachometer and no readable temperature in this session it observes load and clock only, and says so. Rising temperature under sustained load is the signal a technician would watch for; an absent sensor is reported as absent, never as a pass |
+| 33 | **Windows reporting `Status = OK` for a disk is not a health verdict** | It means the OS has not been told the device failed. WMI exposes no raw SMART attributes, so reallocated-sector counts, media-error history and SSD wear remain unknown. The page says exactly that, and points at device-passthrough tools (smartctl, vendor utilities) for the attributes rather than implying the drive is proven healthy |
+| 34 | **A read probe proves accessibility, not integrity** | Opening and reading an existing file shows the volume is mounted and readable. It says nothing about filesystem consistency, bad blocks or pending failure — those would need writes or vendor tools, and no writes are ever performed on user storage |
+| 35 | **Battery wear from a single sample is one indicator, not a verdict** | `(design − full charge) ÷ design` is a real measurement from firmware, but it says nothing about cycle count, temperature history or behaviour under load. The page states the arithmetic it used and calls the figure one indicator among several |
+| 36 | **The update list comes from `Win32_QuickFixEngineering`, which is not Windows Update** | It omits updates installed through newer servicing channels on some builds, and returns an empty list on others. An empty list is therefore reported as *Windows returned no update list through WMI* and is **never** read as *this machine is unpatched* |
+| 37 | **USB enumeration proves driver binding, not that a port works** | Seeing a device in `Win32_PnPEntity` means Windows bound a driver to it. It says nothing about data transfer, connector retention or re-plug behaviour, so detection evidence and the human's manual checks are reported as two separate results and never merged into one pass |
 
 ## Not yet implemented
 
-Phases 5-7 of `IMPLEMENTATION_PLAN.md` (connectivity health, automatic diagnostics,
-history/reports, packaging) are pending; their sidebar entries currently show an explicit
+Phases 6-7 of `IMPLEMENTATION_PLAN.md` (automatic diagnostics, history/CSV/HTML/PDF reports,
+hardening and packaging) are pending; their sidebar entries currently show an explicit
 *Not yet implemented* placeholder that performs no measurement and reports no result.
 
-Phases 1-4 (foundation + dashboard, display, keyboard, touchpad/mouse, speakers, microphone,
-camera, CPU/GPU/RAM stress, fan & cooling, temperature & sensors) are implemented and verified -
+Phases 1-5 (foundation + dashboard, display, keyboard, touchpad/mouse, speakers, microphone,
+camera, CPU/GPU/RAM stress, fan & cooling, temperature & sensors, storage, battery, network,
+Bluetooth, USB, system information, Windows & driver health) are implemented and verified -
 see `PROJECT_STATUS.md`.
 
 Note on Phase 3: the **speakers** and **camera** paths were exercised against real endpoints in
@@ -72,3 +81,12 @@ machine and the cancel-to-idle criterion was measured independently from Windows
 **thermal safety limit** could not be armed because the ACPI thermal zone is access-denied here,
 and the **fan** has no tachometer and no vendor control interface - both are reported exactly as
 described above rather than being simulated.
+
+Note on Phase 5: all seven pages were exercised against this machine. **Storage, battery, system
+and Windows health** were cross-checked with independent `Get-CimInstance` reads and match. The
+**network probe** was run end-to-end twice — local-only (`No fault found`, gateway 12 ms) and full
+(gateway 12 ms → DNS 12.5 ms → HTTP 89 ms) — with the evidence chain printed stage by stage.
+**Bluetooth** was verified for radio/adapter presence only; pairing and discovery are *not*
+implemented and the page says so. **USB** detection was verified, but no known-good device was
+plugged and unplugged in this session, so the five manual checks remain unticked by design — the
+summary explicitly reads *nothing is treated as passing* at zero.

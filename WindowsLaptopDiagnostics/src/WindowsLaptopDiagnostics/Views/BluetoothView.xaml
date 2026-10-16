@@ -1,0 +1,73 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.BluetoothView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,28">
+
+            <TextBlock Text="Bluetooth" Style="{StaticResource TitleText}" />
+            <TextBlock Text="Adapter presence and radio state read from the Windows Bluetooth stack"
+                       Style="{StaticResource MutedText}" Margin="0,2,0,14" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="340" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button Content="Refresh" Style="{StaticResource GhostButton}"
+                                    Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Padding="12,6" />
+                            <TextBlock Text="Bluetooth devices reported by Windows"
+                                       Style="{StaticResource CardTitle}" VerticalAlignment="Center" />
+                        </DockPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                            <TextBlock Text="Radio" Style="{StaticResource MutedText}" FontSize="11"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding RadioState}" FontWeight="SemiBold" FontSize="15"
+                                       Foreground="{StaticResource AccentBrush}" />
+                        </StackPanel>
+
+                        <ItemsControl ItemsSource="{Binding Devices}" Margin="0,12,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="12"
+                                               Foreground="{StaticResource TextBrush}"
+                                               TextWrapping="Wrap" Margin="0,1" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}"
+                                   Margin="0,10,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Error}" Foreground="{StaticResource FailedBrush}"
+                                   Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Visibility="{Binding Error, Converter={StaticResource EmptyToVisibility}}" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Discovery and pairing" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding DiscoveryNote}" Style="{StaticResource MutedText}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="How this is judged" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                                       Text="This page enumerates the Bluetooth stack as Windows reports it: radios, enumerators and protocol nodes, each with its own problem code. Seeing a radio present proves the controller and driver are there — it does not prove any peripheral pairs or holds a link. Pairing is a separate, permission-gated operation, and a denied permission is reported as Permission Required rather than as 'no devices found'." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

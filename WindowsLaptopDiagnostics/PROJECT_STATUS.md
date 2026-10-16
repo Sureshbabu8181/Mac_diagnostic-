@@ -13,8 +13,9 @@
 **Phase 1 — Foundation and working dashboard: COMPLETE and verified.**
 **Phase 2 — Input and display: COMPLETE and verified.**
 **Phase 3 — Multimedia (speakers, microphone, camera): COMPLETE and verified.**
-**Phase 4 — Performance and cooling (CPU/GPU/RAM stress, fan, thermal): COMPLETE and verified.**
-Phases 5–7 not started.
+**Phase 4 - Performance and cooling (CPU/GPU/RAM stress, fan, thermal): COMPLETE and verified.**
+**Phase 5 - Additional hardware (storage, battery, network, Bluetooth, USB, system/Windows): COMPLETE and verified.**
+Phases 6-7 not started.
 
 ---
 
@@ -99,11 +100,34 @@ Phases 5–7 not started.
 | Temperature distinguishes *needs elevation* from *not exposed* | ✅ | `Permission Required`, not `Unsupported` |
 | Sensor dashboard with source on every row | ✅ | 8 rows, each naming its WMI source |
 
+### Phase 5 (complete)
+
+| Feature | Status | Evidence |
+| --- | --- | --- |
+| Physical disk inventory + Windows health verdict | ✅ | WDC PC SN730 · SCSI · 476.9 GB · status `OK` |
+| SMART summary read without masking available data | ✅ | `OK` (raw attributes honestly declared out of reach) |
+| Volume usage per drive | ✅ | `C: 14.7 % used · 405.9 GB free of 476 GB` |
+| Read-only accessibility probe (no writes ever) | ✅ | `Directory listing readable.` · nothing written |
+| Battery charge + AC/charging state | ✅ | `95 %` · `On AC - not charging` |
+| Wear only when **both** capacities are exposed | ✅ | design 45000 mWh − full 32140 mWh → **28.6 %** (measured) |
+| Wear explanation derived from the actual reading | ✅ | title switches to *How wear was calculated* when computable |
+| Adapter addressing (IP/gateway/DNS/MAC/DHCP) | ✅ | AX200 · 10.254.10.76 · GW 10.254.10.1 · DNS 8.8.8.8… |
+| Probes opt-in: opening the page sends **no** traffic | ✅ | status reads *No traffic has been sent yet* |
+| Staged probe localises the fault to its smallest scope | ✅ | gateway → DNS → internet, stopping at first failure |
+| Full probe reached HTTP with evidence at each stage | ✅ | `gateway 12 ms · DNS 12.5 ms · internet 89 ms` |
+| Bluetooth radio vs protocol-node detection | ✅ | `Radio present` · 4 entries, all `error 0` |
+| USB controllers/devices with decoded problem codes | ✅ | 7 devices, `With a problem code = 0` |
+| Detection evidence kept separate from manual checks | ✅ | manual summary reads *nothing is treated as passing* at 0 |
+| Manual checklist updates its own summary when ticked | ✅ | 0 → `1 of 5 manual checks confirmed by you.` |
+| System inventory, `Unavailable` rather than invented | ✅ | 13 rows read live (serial `PG033Z8N`, build 26200) |
+| Device problem codes decoded to plain language | ✅ | `All 197 enumerated devices report ConfigManagerErrorCode = 0` |
+| Read-only servicing state, admin items labelled | ✅ | install `2025-05-23` · 7 updates · *nothing installed or repaired* |
+
 ### Not implemented yet
 
-Phases 5-7: storage health, battery, network, Bluetooth, USB, system/Windows health,
-automatic diagnostics, history/reports. These currently render an explicit
-*Not yet implemented* placeholder that measures nothing.
+Phases 6-7: automatic diagnostics, history/CSV/HTML/PDF reports, hardening and
+packaging. These currently render an explicit *Not yet implemented* placeholder
+that measures nothing.
 
 Note on Phase 3: **speakers** and **camera** were exercised against real endpoints in this
 session (playback reported `Playing Left route on Remote Audio`; camera delivered 382 frames
@@ -154,6 +178,52 @@ counter sampling, so the numbers come from Windows rather than from the app:
 | 10 | Fan RPM reports *Unsupported* | ✅ `Win32_Fan reports no fan` |
 | 11 | Dropdown selection binds to duration | ✅ chose 10 → `up to 10 s` in status text |
 | 12 | Dark input chrome (TextBox/ComboBox) | ✅ themed; Display page unchanged otherwise |
+
+### Phase 5 verification
+
+Driven by `System.Windows.Automation` navigation, checkbox toggles and button
+invokes, plus independent `Get-CimInstance` reads to confirm the app is showing
+what Windows actually reports:
+
+| # | Check | Result |
+| --- | --- | --- |
+| 1 | Build clean | ✅ 0 warnings, 0 errors |
+| 2 | All 7 pages navigate and render | ✅ storage, battery, network, Bluetooth, USB, system, Windows |
+| 3 | Disk + SMART read, no data written | ✅ SN730 `OK`; probe reported *readable*, no file altered |
+| 4 | Battery wear uses both real capacities | ✅ 45000 / 32140 mWh → 28.6 % |
+| 5 | Wear note matches the numbers beside it | ✅ title flips to *How wear was calculated* |
+| 6 | Adapter addressing matches WMI | ✅ AX200 · 10.254.10.76 · GW 10.254.10.1 |
+| 7 | Local probe sent only inside the LAN | ✅ `No fault found` · gateway answered 12 ms |
+| 8 | Full probe reached HTTP with staged evidence | ✅ gateway 12 ms · DNS 12.5 ms · internet 89 ms |
+| 9 | Internet probe stays off until enabled | ✅ default `Allow DNS + internet probe` unchecked |
+| 10 | Bluetooth radio correctly distinguished | ✅ `Radio present` (RFCOMM/Enumerator nodes excluded) |
+| 11 | USB evidence ≠ manual result at 0 ticks | ✅ *No manual check confirmed yet - nothing is treated as passing* |
+| 12 | Manual checklist updates its summary | ✅ toggled → `1 of 5 manual checks confirmed by you.` |
+| 13 | System inventory shows `Unavailable`, not blanks | ✅ 13 live rows; no field fabricated |
+| 14 | Windows health decodes all device codes | ✅ 197 devices, all `ConfigManagerErrorCode = 0` |
+| 15 | Servicing state is read-only and labelled so | ✅ *Read-only - nothing is installed or repaired here* |
+| 16 | Checklist text wraps instead of clipping | ✅ re-rendered after `TextWrapping` fix |
+
+**Real values observed on this machine during Phase 5 (live Windows reads):**
+
+```
+Disk    WDC PC SN730 SDBQNTY-512G-1001 · SCSI · 476.9 GB · Windows status "OK"
+SMART   "OK" - OS-level summary only; raw attributes (reallocated sectors,
+        wear, temperature) are NOT exposed through WMI and are not invented
+Volume  C: · NTFS · 14.7 % used · 405.9 GB free of 476 GB · listing readable
+Battery 95 % · On AC - not charging · design 45000 mWh · full charge 32140 mWh
+        -> wear 28.6 % (measured from both firmware capacities, not estimated)
+Network Intel(R) Wi-Fi 6 AX200 160MHz · 60:A5:E2:83:AE:E1 · DHCP on
+        IP 10.254.10.76 · GW 10.254.10.1 · DNS 8.8.8.8, 8.8.4.4, 1.1.1.1
+Probe   gateway 12 ms · DNS 12.5 ms · HTTP 89 ms -> "No fault found"
+        evidence listed stage by stage, stopping at the first failure
+Bluetooth  Intel Wireless Bluetooth radio present + 3 enumerator nodes, err 0
+USB     7 devices/controllers enumerated, 0 with a problem code
+        5 manual checks required - none auto-counted as passing
+System  LENOVO 20X1S0WF00 · serial PG033Z8N · BIOS R1JET74W · i5-1135G7 4C/8T
+        15.7 GB · Windows 11 Pro build 26200 · uptime 1d 14h · 197 devices
+Windows 197/197 devices ConfigManagerErrorCode = 0 · install 2025-05-23 · 7 updates
+```
 
 **Real values observed during a CPU run (proving live reads, not mock data):**
 
@@ -225,6 +295,18 @@ Battery 95% · AC adapter · not charging
 | 33 | `PerformanceService.ReadCpu(out _)` bound to a **variable** named `_` | the enclosing `Timer` lambda already had a `_` parameter, shadowing the discard | used a named `out string throttleExplain` |
 | 34 | `SensorState` had no `Label()` | only `TestStatus` had the extension | `SensorStateExtensions.Label()` added (`Permission Required` vs `Unsupported`) |
 
+## Errors found and fixed during Phase 5
+
+| # | Error | Cause | Fix |
+| --- | --- | --- | --- |
+| 35 | SMART read **`Unavailable`** while the very same row showed Windows status `OK` | one `SELECT Status,PredictFailure` fails outright as *Invalid query* on this system, so the readable `Status` was lost with it | the two properties are read in separate queries; an unavailable property can no longer mask an available one |
+| 36 | Network page reported **`No IP-enabled adapter reported by Windows`** although an adapter held an IP | `NetConnectionStatus` belongs to `Win32_NetworkAdapter`, not `Win32_NetworkAdapterConfiguration`; including it invalidated the whole `SELECT` | property removed from the query; adapter, IP, gateway and DNS now all appear |
+| 37 | Windows install date read **`Unavailable`** | WMI returns `InstallDate` as a DMTF timestamp (`20250523162303.000000+330`), but the code parsed it as Unix seconds | parsed with `ManagementDateTimeConverter.ToDateTime`; now `2025-05-23` |
+| 38 | Battery card claimed *"design capacity is not exposed on this machine"* while the row beside it showed `Design 45000 mWh` and `wear 28.6 %` | the explanation was static text written during probing, so it contradicted the live reading it sat next to | note and its title are now generated from the actual reading, so they cannot disagree with the numbers |
+| 39 | `HttpClient` not found; `ToLocalDateTime()` does not exist; `RelayCommand<string>` is not a type | missing `using System.Net.Http`; `DateTimeOffset` exposes `LocalDateTime` as a property; only non-generic `RelayCommand` exists | using added; `.LocalDateTime`; probes moved to `AsyncRelayCommand` |
+| 40 | `CS0128`/`CS0165` duplicate and unassigned `d`, `f` in the battery note | the new pattern variables reused names already bound earlier in the same scope | renamed to `wearNow` / `designNow` / `fullNow` |
+| 41 | USB checklist text clipped at the panel edge (`...plugged into the p`) | `CheckBox` content does not wrap by default | content moved into an inner `TextBlock` with `TextWrapping="Wrap"` |
+
 ---
 
 ## Known limitations
@@ -261,8 +343,8 @@ See [docs/Known-Limitations.md](docs/Known-Limitations.md). Headline items:
 | 2 | Display, keyboard, touchpad/mouse | ✅ done & verified |
 | 3 | Speakers, microphone, camera | ✅ done & verified |
 | 4 | CPU/GPU/RAM stress, fan, thermal | ✅ done & verified |
-| 5 | Storage, battery, network, Bluetooth, USB, system/Windows health | ⬜ not started |
+| 5 | Storage, battery, network, Bluetooth, USB, system/Windows health | ✅ done & verified |
 | 6 | Automatic diagnostics, history, CSV/HTML/PDF | ⬜ not started |
 | 7 | Hardening, profiling, packaging, final docs | ⬜ not started |
 
-**Never claimed:** the application is not finished. Only Phases 1-4 are implemented and verified.
+**Never claimed:** the application is not finished. Only Phases 1-5 are implemented and verified.

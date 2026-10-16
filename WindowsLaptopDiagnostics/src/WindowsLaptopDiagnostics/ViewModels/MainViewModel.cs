@@ -218,6 +218,13 @@ public sealed class MainViewModel : ObservableObject
             ["ram"]      = new RamStressViewModel(),
             ["fan"]      = new FanViewModel(),
             ["thermal"]  = new ThermalViewModel(),
+            ["storage"]  = new StorageViewModel(),
+            ["battery"]  = new BatteryViewModel(),
+            ["network"]  = new NetworkViewModel(),
+            ["bluetooth"]= new BluetoothViewModel(),
+            ["usb"]      = new UsbViewModel(),
+            ["system"]   = new SystemInfoViewModel(),
+            ["windows"]  = new WindowsHealthViewModel(),
         };
 
         foreach (var d in NavDefinitions)

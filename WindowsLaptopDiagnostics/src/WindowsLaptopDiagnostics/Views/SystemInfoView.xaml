@@ -1,0 +1,66 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.SystemInfoView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,28">
+
+            <TextBlock Text="System Information" Style="{StaticResource TitleText}" />
+            <TextBlock Text="Read-only inventory from WMI and Windows APIs — values marked Unavailable were not reported"
+                       Style="{StaticResource MutedText}" Margin="0,2,0,14" TextWrapping="Wrap" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="320" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button Content="Refresh" Style="{StaticResource GhostButton}"
+                                    Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Padding="12,6" />
+                            <TextBlock Text="Inventory" Style="{StaticResource CardTitle}" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding Rows}" Margin="0,10,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="4"
+                                            Padding="10,6" Margin="0,0,0,4">
+                                        <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="13"
+                                                   Foreground="{StaticResource TextBrush}"
+                                                   TextWrapping="Wrap" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}"
+                                   Margin="0,10,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Error}" Foreground="{StaticResource FailedBrush}"
+                                   Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Visibility="{Binding Error, Converter={StaticResource EmptyToVisibility}}" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="How this is judged" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                                       Text="Every value comes from a direct Windows query, never from a cached or estimated figure. Where a field is not reported by the firmware — a common example is serial number on some models — it reads Unavailable rather than being inferred. Device count is the number Windows actually enumerates, not a catalogue of what ought to be present." />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Reading it" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                                       Text="Cores/threads and memory come from the OS, identity fields from Win32_ComputerSystem and Win32_BIOS, and uptime from the system tick counter. Nothing on this page is a test result — it is context for interpreting the tests that follow." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

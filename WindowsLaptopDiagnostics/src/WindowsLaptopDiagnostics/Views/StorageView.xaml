@@ -1,0 +1,123 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.StorageView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,28">
+
+            <TextBlock Text="SSD / HDD Health" Style="{StaticResource TitleText}" />
+            <TextBlock Text="Read-only inventory, SMART summary and volume usage — no writes, no formats, no destructive patterns"
+                       Style="{StaticResource MutedText}" Margin="0,2,0,14" TextWrapping="Wrap" />
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <DockPanel>
+                        <Button Content="Refresh" Style="{StaticResource GhostButton}"
+                                Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Padding="12,6" />
+                        <TextBlock Text="Physical disks" Style="{StaticResource CardTitle}"
+                                   VerticalAlignment="Center" />
+                    </DockPanel>
+
+                    <ItemsControl ItemsSource="{Binding Disks}" Margin="0,10,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="6"
+                                        Padding="10,8" Margin="0,0,0,6">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <TextBlock Text="{Binding Model}" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextBrush}"
+                                                       TextWrapping="Wrap" DockPanel.Dock="Left" />
+                                            <TextBlock Text="{Binding Health}" HorizontalAlignment="Right"
+                                                       FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource AccentBrush}" />
+                                        </DockPanel>
+                                        <TextBlock FontFamily="Consolas" FontSize="11"
+                                                   Foreground="{StaticResource MutedBrush}"
+                                                   TextWrapping="Wrap" Margin="0,3,0,0">
+                                            <Run Text="{Binding Interface, Mode=OneWay}" /> <Run Text="·" />
+                                            <Run Text="{Binding Size, Mode=OneWay}" /> <Run Text="·" />
+                                            <Run Text="S/N" /> <Run Text="{Binding Serial, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Status}" FontSize="11"
+                                                   Foreground="{StaticResource MutedBrush}"
+                                                   Margin="0,3,0,0" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="6" Padding="10,8"
+                            Margin="0,6,0,0">
+                        <StackPanel>
+                            <TextBlock Text="SMART summary" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextBrush}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBlock Text="{Binding SmartValue}" FontSize="18" FontWeight="SemiBold"
+                                           FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding SmartDetail}" Style="{StaticResource MutedText}"
+                                       FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                <StackPanel>
+                    <TextBlock Text="Volumes and usage" Style="{StaticResource CardTitle}" Margin="0,0,0,8" />
+                    <ItemsControl ItemsSource="{Binding Volumes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Width="46" Text="{Binding Letter, Mode=OneWay}"
+                                               FontFamily="Consolas" FontWeight="SemiBold"
+                                               Foreground="{StaticResource AccentBrush}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Label, Mode=OneWay}"
+                                               Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Usage, Mode=OneWay}"
+                                               Style="{StaticResource MutedText}" FontFamily="Consolas" />
+                                    <TextBlock Grid.Column="3" Margin="10,0,0,0"
+                                               Text="{Binding Fs, Mode=OneWay}"
+                                               Style="{StaticResource MutedText}" FontFamily="Consolas" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ItemsControl ItemsSource="{Binding Volumes}" Margin="0,8,0,0"
+                                  Visibility="{Binding Volumes.Count, Converter={StaticResource EmptyToVisibilityInverted}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Detail, Mode=OneWay}" FontSize="11"
+                                           Style="{StaticResource MutedText}" Margin="0,1" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}"
+                               Margin="0,10,0,0" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Error}" Foreground="{StaticResource FailedBrush}"
+                               Margin="0,6,0,0" TextWrapping="Wrap"
+                               Visibility="{Binding Error, Converter={StaticResource EmptyToVisibility}}" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                <StackPanel>
+                    <TextBlock Text="How this is judged" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                    <TextBlock Text="{Binding ReadNote}" Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,6,0,0"
+                               Text="Windows exposes only a summary SMART verdict through WMI, not the raw attributes — reallocated sectors, media errors and SSD wear counters are not readable here. A 'OK' therefore means the OS sees no reported failure, not that the drive is provably healthy; tools that pass through to the device (smartctl, vendor utilities) are needed for raw attributes. Volume usage and the read probe prove accessibility, not integrity." />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

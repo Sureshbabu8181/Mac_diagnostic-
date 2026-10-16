@@ -116,6 +116,27 @@
                 <DataTemplate DataType="{x:Type vm:ThermalViewModel}">
                     <views:ThermalView />
                 </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:StorageViewModel}">
+                    <views:StorageView />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:BatteryViewModel}">
+                    <views:BatteryView />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:NetworkViewModel}">
+                    <views:NetworkView />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:BluetoothViewModel}">
+                    <views:BluetoothView />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:UsbViewModel}">
+                    <views:UsbView />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:SystemInfoViewModel}">
+                    <views:SystemInfoView />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:WindowsHealthViewModel}">
+                    <views:WindowsHealthView />
+                </DataTemplate>
                 <DataTemplate DataType="{x:Type vm:PlaceholderViewModel}">
                     <views:PlaceholderView />
                 </DataTemplate>

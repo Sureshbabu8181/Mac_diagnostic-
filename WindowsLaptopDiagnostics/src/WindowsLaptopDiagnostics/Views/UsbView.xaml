@@ -1,0 +1,102 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.UsbView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,28">
+
+            <TextBlock Text="USB &amp; External Ports" Style="{StaticResource TitleText}" />
+            <TextBlock Text="Detection evidence from Windows, kept separate from the checks only you can perform"
+                       Style="{StaticResource MutedText}" Margin="0,2,0,14" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="380" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button Content="Refresh" Style="{StaticResource GhostButton}"
+                                    Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Padding="12,6" />
+                            <TextBlock Text="Detected devices and controllers" Style="{StaticResource CardTitle}"
+                                       VerticalAlignment="Center" />
+                        </DockPanel>
+
+                        <UniformGrid Columns="2" Margin="0,12,0,0">
+                            <StackPanel Margin="0,0,10,0">
+                                <TextBlock Text="Detected" Style="{StaticResource MutedText}" FontSize="11" />
+                                <TextBlock Text="{Binding DeviceCount}" FontSize="24" FontWeight="SemiBold"
+                                           FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="With a problem code" Style="{StaticResource MutedText}" FontSize="11" />
+                                <TextBlock Text="{Binding ProblemCount}" FontSize="24" FontWeight="SemiBold"
+                                           FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <ItemsControl ItemsSource="{Binding Devices}" Margin="0,12,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="12"
+                                               Foreground="{StaticResource TextBrush}"
+                                               TextWrapping="Wrap" Margin="0,1" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="{Binding EvidenceSummary}" Style="{StaticResource MutedText}"
+                                   FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0" />
+                        <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}"
+                                   Margin="0,8,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Error}" Foreground="{StaticResource FailedBrush}"
+                                   Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Visibility="{Binding Error, Converter={StaticResource EmptyToVisibility}}" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <DockPanel>
+                                <Button Content="Clear" Style="{StaticResource GhostButton}"
+                                        Command="{Binding ResetManualCommand}" DockPanel.Dock="Right"
+                                        Padding="10,5" FontSize="11" />
+                                <TextBlock Text="Guided manual checks" Style="{StaticResource CardTitle}"
+                                           VerticalAlignment="Center" />
+                            </DockPanel>
+                            <TextBlock Text="These cannot be detected in software. Tick each one yourself after performing it."
+                                       Style="{StaticResource MutedText}" FontSize="12" TextWrapping="Wrap"
+                                       Margin="0,6,0,10" />
+                            <ItemsControl ItemsSource="{Binding Checks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding Done, Mode=TwoWay}"
+                                                  Foreground="{StaticResource TextBrush}"
+                                                  FontSize="12" Margin="0,0,0,9">
+                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
+                                                       Foreground="{StaticResource TextBrush}" />
+                                        </CheckBox>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding ManualSummary}" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="How this is judged" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                                       Text="Windows reporting a device proves enumeration and driver binding only. It says nothing about whether the port actually transfers data, holds the connector, or survives a re-plug — those need a known-good device and a human. The two evidence types are therefore reported separately and never merged, so a green detection count can never be mistaken for a passing port test." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

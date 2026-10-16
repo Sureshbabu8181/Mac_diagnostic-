@@ -1,0 +1,113 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.NetworkView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,28">
+
+            <TextBlock Text="Wi-Fi &amp; Network" Style="{StaticResource TitleText}" />
+            <TextBlock Text="Adapter addressing read locally; probes run only when you ask, and localise the fault to its smallest evidenced scope"
+                       Style="{StaticResource MutedText}" Margin="0,2,0,14" TextWrapping="Wrap" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="360" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button Content="Refresh" Style="{StaticResource GhostButton}"
+                                    Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Padding="12,6" />
+                            <TextBlock Text="Adapters" Style="{StaticResource CardTitle}" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding Adapters}" Margin="0,10,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="12"
+                                               Foreground="{StaticResource TextBrush}"
+                                               TextWrapping="Wrap" Margin="0,1" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}"
+                                   Margin="0,10,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Error}" Foreground="{StaticResource FailedBrush}"
+                                   Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Visibility="{Binding Error, Converter={StaticResource EmptyToVisibility}}" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Reachability probe" Style="{StaticResource CardTitle}" Margin="0,0,0,8" />
+
+                            <TextBlock Text="Send local traffic (gateway ping)" Style="{StaticResource BodyText}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="Stays inside your network — no external host is contacted."
+                                       Style="{StaticResource MutedText}" FontSize="11" Margin="0,2,0,6" />
+                            <CheckBox Content="Allow gateway ping"
+                                      IsChecked="{Binding LocalTrafficAllowed, Mode=TwoWay}"
+                                      Foreground="{StaticResource TextBrush}" />
+
+                            <TextBlock Text="Include DNS and internet" Style="{StaticResource BodyText}"
+                                       TextWrapping="Wrap" Margin="0,10,0,0" />
+                            <TextBlock Text="Resolves a public name and contacts an external endpoint."
+                                       Style="{StaticResource MutedText}" FontSize="11" Margin="0,2,0,6" />
+                            <CheckBox Content="Allow DNS + internet probe"
+                                      IsChecked="{Binding InternetTrafficAllowed, Mode=TwoWay}"
+                                      Foreground="{StaticResource TextBrush}" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                <Button Content="Local check" Style="{StaticResource AccentButton}"
+                                        Command="{Binding LocalCheckCommand}" Padding="14,7" />
+                                <Button Content="Full check" Style="{StaticResource GhostButton}"
+                                        Margin="10,0,0,0" Command="{Binding FullCheckCommand}" Padding="14,7" />
+                            </StackPanel>
+
+                            <ProgressBar Style="{StaticResource ThinProgress}" Height="6" Margin="0,12,0,0"
+                                         IsIndeterminate="{Binding IsProbing}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Verdict" Style="{StaticResource CardTitle}" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding Domain}" FontSize="16" FontWeight="SemiBold"
+                                       Foreground="{StaticResource AccentBrush}" />
+                            <TextBlock Text="{Binding Verdict}" Style="{StaticResource BodyText}"
+                                       TextWrapping="Wrap" Margin="0,6,0,0" />
+                            <TextBlock Text="{Binding LatencyText}" FontFamily="Consolas" FontSize="12"
+                                       Foreground="{StaticResource MutedBrush}" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Evidence" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <ItemsControl ItemsSource="{Binding Evidence}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" Style="{StaticResource MutedText}"
+                                                   FontSize="12" TextWrapping="Wrap" Margin="0,0,0,5" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                <StackPanel>
+                    <TextBlock Text="How this is judged" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                    <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                               Text="The probe is staged — adapter, then address, then gateway, then DNS, then internet — and stops at the first stage that fails. That is why the verdict names a scope (router vs DNS vs upstream) instead of a bare 'no internet': each earlier stage left positive evidence before the failure. Outbound traffic only happens after you enable an option; opening this page sends nothing." />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

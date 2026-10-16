@@ -238,12 +238,33 @@ public static class WindowsApi
     public static List<Dictionary<string, object?>> LogicalDisks() =>
         WmiRows("Win32_LogicalDisk", "DeviceID", "DriveType", "Size", "FreeSpace", "FileSystem");
 
+    /// <summary>
+    /// SMART verdict from the OS-level summary.
+    ///
+    /// <c>PredictFailure</c> is not queryable on every system, and a combined
+    /// SELECT fails outright ("Invalid query") — which used to hide the
+    /// <c>Status</c> that *is* readable. The two are read separately so an
+    /// unavailable property cannot mask an available one.
+    /// </summary>
     public static string? SmartStatus()
     {
-        var rows = WmiRows("Win32_DiskDrive", "Status", "PredictFailure");
+        var rows = WmiRows("Win32_DiskDrive", "Status");
         if (rows.Count == 0) return null;
-        var pf = rows[0].GetValueOrDefault("PredictFailure");
-        return pf?.ToString() ?? rows[0].GetValueOrDefault("Status")?.ToString();
+
+        string? status = rows[0].GetValueOrDefault("Status")?.ToString();
+        if (string.IsNullOrWhiteSpace(status)) return null;
+
+        var pfRows = WmiRows("Win32_DiskDrive", "PredictFailure");
+        if (pfRows.Count > 0)
+        {
+            string? pf = pfRows[0].GetValueOrDefault("PredictFailure")?.ToString();
+            bool isFalse = string.IsNullOrWhiteSpace(pf) ||
+                           pf.Equals("False", StringComparison.OrdinalIgnoreCase) ||
+                           pf.Equals("0", StringComparison.OrdinalIgnoreCase);
+            if (!isFalse) return pf!;
+        }
+
+        return status;
     }
 
     // ------------------------------------------------------------------ //

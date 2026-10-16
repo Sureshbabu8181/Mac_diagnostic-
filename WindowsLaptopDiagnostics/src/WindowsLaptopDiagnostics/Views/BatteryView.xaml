@@ -1,0 +1,103 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.BatteryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,28">
+
+            <TextBlock Text="Battery &amp; Charging" Style="{StaticResource TitleText}" />
+            <TextBlock Text="Charge, power source and wear — wear only when both capacities are exposed"
+                       Style="{StaticResource MutedText}" Margin="0,2,0,14" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="340" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button Content="Refresh" Style="{StaticResource GhostButton}"
+                                    Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Padding="12,6" />
+                            <TextBlock Text="Charge and power source" Style="{StaticResource CardTitle}"
+                                       VerticalAlignment="Center" />
+                        </DockPanel>
+
+                        <UniformGrid Columns="2" Margin="0,14,0,0">
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock Text="Charge" Style="{StaticResource MutedText}" FontSize="11" />
+                                <TextBlock Text="{Binding Charge}" FontSize="40" FontWeight="SemiBold"
+                                           FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" />
+                                <ProgressBar Style="{StaticResource ThinProgress}" Height="8" Margin="0,6,0,0"
+                                             Minimum="0" Maximum="100"
+                                             Value="{Binding ChargePercent, Mode=OneWay}" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Power source" Style="{StaticResource MutedText}" FontSize="11" />
+                                <TextBlock Text="{Binding SourceState}" FontSize="20" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextBrush}" TextWrapping="Wrap"
+                                           Margin="0,4,0,0" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <Separator Background="{StaticResource BorderBrush}" Margin="0,18,0,12" />
+                        <TextBlock Text="Capacities (design vs full charge)" Style="{StaticResource SectionHeader}" />
+
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Design capacity" Style="{StaticResource MutedText}" FontSize="11" />
+                                <TextBlock Text="{Binding DesignValue}" FontSize="20" FontWeight="SemiBold"
+                                           FontFamily="Consolas" Foreground="{StaticResource TextBrush}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Full-charge capacity" Style="{StaticResource MutedText}" FontSize="11" />
+                                <TextBlock Text="{Binding FullValue}" FontSize="20" FontWeight="SemiBold"
+                                           FontFamily="Consolas" Foreground="{StaticResource TextBrush}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="Estimated wear" Style="{StaticResource MutedText}" FontSize="11" />
+                                <TextBlock Text="{Binding WearValue}" FontSize="20" FontWeight="SemiBold"
+                                           FontFamily="Consolas"
+                                           Foreground="{StaticResource TextBrush}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="{Binding WearDetail}" Style="{StaticResource MutedText}"
+                                   FontSize="12" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}"
+                                   Margin="0,10,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Error}" Foreground="{StaticResource FailedBrush}"
+                                   Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Visibility="{Binding Error, Converter={StaticResource EmptyToVisibility}}" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding WearNoteTitle}" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding WearNote}" Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="How this is judged" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                                       Text="Charge and AC state are live Windows power readings refreshed on demand. A battery is not called good or bad from a single sample: wear percentages need both capacities, and cycle count is only meaningful where the firmware reports it. Nothing here is written back to the battery or the power policy." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

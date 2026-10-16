@@ -1,0 +1,87 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.WindowsHealthView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,28">
+
+            <TextBlock Text="Windows &amp; Driver Health" Style="{StaticResource TitleText}" />
+            <TextBlock Text="Read-only device problem codes and servicing state — no repair action is ever executed here"
+                       Style="{StaticResource MutedText}" Margin="0,2,0,14" TextWrapping="Wrap" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="360" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button Content="Refresh" Style="{StaticResource GhostButton}"
+                                    Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Padding="12,6" />
+                            <TextBlock Text="Device problems" Style="{StaticResource CardTitle}"
+                                       VerticalAlignment="Center" />
+                        </DockPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                            <TextBlock Text="{Binding Build}" FontSize="15" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextBrush}" Margin="0,0,14,0"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding DeviceSummary}" FontSize="13"
+                                       Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <ItemsControl ItemsSource="{Binding Problems}" Margin="0,12,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="12"
+                                               Foreground="{StaticResource TextBrush}"
+                                               TextWrapping="Wrap" Margin="0,1" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Separator Background="{StaticResource BorderBrush}" Margin="0,14,0,12" />
+                        <TextBlock Text="Servicing state (read-only)" Style="{StaticResource SectionHeader}" />
+                        <ItemsControl ItemsSource="{Binding Servicing}" Margin="0,8,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="12"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               TextWrapping="Wrap" Margin="0,1" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}"
+                                   Margin="0,10,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Error}" Foreground="{StaticResource FailedBrush}"
+                                   Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Visibility="{Binding Error, Converter={StaticResource EmptyToVisibility}}" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="What is not done here" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding AdminNote}" Style="{StaticResource MutedText}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="How this is judged" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                                       Text="A device problem is whatever ConfigManagerErrorCode Windows reports, decoded into plain language rather than left as a number. Error 22 (disabled by a user) and error 43 (device reported a problem) mean different things and are shown differently. The update list comes from WMI and can be empty on machines where Windows does not report it — that is stated rather than read as 'unpatched'. Health here means 'no problems reported', which is weaker than 'proven working'." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
