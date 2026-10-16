@@ -101,6 +101,21 @@
                 <DataTemplate DataType="{x:Type vm:CameraViewModel}">
                     <views:CameraView />
                 </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:CpuStressViewModel}">
+                    <views:CpuStressView />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:GpuStressViewModel}">
+                    <views:GpuStressView />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:RamStressViewModel}">
+                    <views:RamStressView />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:FanViewModel}">
+                    <views:FanView />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:ThermalViewModel}">
+                    <views:ThermalView />
+                </DataTemplate>
                 <DataTemplate DataType="{x:Type vm:PlaceholderViewModel}">
                     <views:PlaceholderView />
                 </DataTemplate>

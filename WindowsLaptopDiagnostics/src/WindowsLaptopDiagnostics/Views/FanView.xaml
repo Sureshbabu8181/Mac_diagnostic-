@@ -1,0 +1,101 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.FanView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,28">
+
+            <TextBlock Text="Fan &amp; Cooling" Style="{StaticResource TitleText}" />
+            <TextBlock Text="Observation mode — no vendor-supported fan control exists on this machine"
+                       Style="{StaticResource MutedText}" Margin="0,2,0,14" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="340" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Why the maximum-speed test is unavailable"
+                                   Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding ControlUnavailableReason}"
+                                   Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+
+                        <Separator Background="{StaticResource BorderBrush}" Margin="0,14,0,10" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Observe 10 s" Style="{StaticResource AccentButton}"
+                                    Command="{Binding StartCommand}" Padding="14,7" />
+                            <Button Content="Cancel" Style="{StaticResource GhostButton}" Margin="10,0,0,0"
+                                    Command="{Binding CancelCommand}" Padding="14,7" />
+                            <Button Content="Reset" Style="{StaticResource GhostButton}" Margin="10,0,0,0"
+                                    Command="{Binding ResetCommand}" Padding="14,7" />
+                        </StackPanel>
+
+                        <StackPanel Margin="0,16,0,0">
+                            <DockPanel>
+                                <TextBlock Text="Observation window" Style="{StaticResource SectionHeader}"
+                                           DockPanel.Dock="Left" />
+                                <TextBlock Text="{Binding ElapsedText}" Style="{StaticResource MutedText}"
+                                           HorizontalAlignment="Right" FontFamily="Consolas" />
+                            </DockPanel>
+                            <ProgressBar Style="{StaticResource ThinProgress}" Height="8" Margin="0,6,0,0"
+                                         Minimum="0" Maximum="100" Value="{Binding ProgressPercent, Mode=OneWay}" />
+                        </StackPanel>
+
+                        <UniformGrid Columns="2" Margin="0,16,0,0">
+                            <StackPanel Margin="0,0,10,0">
+                                <TextBlock Text="Fan speed" Style="{StaticResource MutedText}" FontSize="11" />
+                                <TextBlock Text="{Binding FanText}" Foreground="{StaticResource AccentBrush}"
+                                           FontSize="22" FontWeight="SemiBold" FontFamily="Consolas" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Temperature" Style="{StaticResource MutedText}" FontSize="11" />
+                                <TextBlock Text="{Binding TemperatureText}" Foreground="{StaticResource AccentBrush}"
+                                           FontSize="22" FontWeight="SemiBold" FontFamily="Consolas" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}" Margin="0,12,0,0"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Error}" Foreground="{StaticResource FailedBrush}" Margin="0,6,0,0"
+                                   TextWrapping="Wrap"
+                                   Visibility="{Binding Error, Converter={StaticResource EmptyToVisibility}}" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Sensor availability" Style="{StaticResource CardTitle}" Margin="0,0,0,8" />
+                            <ItemsControl ItemsSource="{Binding SensorNotes}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" Style="{StaticResource MutedText}"
+                                                   TextWrapping="Wrap" Margin="0,0,0,6" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Result" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding ResultText}" Style="{StaticResource BodyText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="How this is judged" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Text="Driving a fan to maximum speed is only safe when a documented, vendor-supported control method can restore the previous state on exit, cancel and fault. No such method exists here, so this module observes instead of controlling — it never writes to the embedded controller. With no tachometer exposed, cooling effectiveness cannot be proven directly; rising temperature under sustained load is the observable signal, and load/clock are read from Windows counters."
+                                       Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

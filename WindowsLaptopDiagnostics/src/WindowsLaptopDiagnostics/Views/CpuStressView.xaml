@@ -1,0 +1,151 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.CpuStressView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:WindowsLaptopDiagnostics.ViewModels">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,28">
+
+            <TextBlock Text="CPU Stress Test" Style="{StaticResource TitleText}" />
+            <TextBlock Text="Bounded multi-threaded load with live utilisation, clock, and thermal safety limits"
+                       Style="{StaticResource MutedText}" Margin="0,2,0,14" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="340" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Workload controls + live telemetry -->
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Duration" Style="{StaticResource MutedText}" FontSize="11" />
+                                <ComboBox ItemsSource="{Binding Source={x:Static vm:CpuStressViewModel.DurationOptions}}"
+                                          SelectedItem="{Binding DurationSeconds}" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Worker threads" Style="{StaticResource MutedText}" FontSize="11" />
+                                <TextBox Text="{Binding ThreadCount, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Text="{Binding ThreadHint}" Style="{StaticResource MutedText}" Margin="0,6,0,0"
+                                   TextWrapping="Wrap" />
+
+                        <Separator Background="{StaticResource BorderBrush}" Margin="0,14,0,10" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Start load" Style="{StaticResource AccentButton}"
+                                    Command="{Binding StartCommand}" Padding="14,7" />
+                            <Button Content="Cancel" Style="{StaticResource GhostButton}" Margin="10,0,0,0"
+                                    Command="{Binding CancelCommand}" Padding="14,7" />
+                            <Button Content="Reset" Style="{StaticResource GhostButton}" Margin="10,0,0,0"
+                                    Command="{Binding ResetCommand}" Padding="14,7" />
+                        </StackPanel>
+
+                        <!-- Progress -->
+                        <StackPanel Margin="0,16,0,0">
+                            <DockPanel>
+                                <TextBlock Text="Progress" Style="{StaticResource SectionHeader}" DockPanel.Dock="Left" />
+                                <TextBlock Text="{Binding ElapsedText}" Style="{StaticResource MutedText}"
+                                           HorizontalAlignment="Right" FontFamily="Consolas" />
+                            </DockPanel>
+                            <ProgressBar Style="{StaticResource ThinProgress}" Height="8" Margin="0,6,0,0"
+                                         Minimum="0" Maximum="100" Value="{Binding ProgressPercent, Mode=OneWay}" />
+                        </StackPanel>
+
+                        <!-- Live readings -->
+                        <TextBlock Text="{Binding ReadingsCaption}" Style="{StaticResource MutedText}"
+                                   FontSize="11" Margin="0,14,0,2" />
+                        <UniformGrid Columns="3">
+                            <StackPanel Margin="0,0,10,0">
+                                <TextBlock Text="CPU load" Style="{StaticResource MutedText}" FontSize="11" />
+                                <TextBlock Text="{Binding LoadPercent, Mode=OneWay, StringFormat={}{0:0.#} %}"
+                                           Foreground="{StaticResource AccentBrush}" FontSize="22"
+                                           FontWeight="SemiBold" FontFamily="Consolas" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,10,0">
+                                <TextBlock Text="Clock" Style="{StaticResource MutedText}" FontSize="11" />
+                                <TextBlock Text="{Binding ClockMHz, Mode=OneWay, StringFormat={}{0:0} MHz}"
+                                           Foreground="{StaticResource AccentBrush}" FontSize="22"
+                                           FontWeight="SemiBold" FontFamily="Consolas" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Temperature" Style="{StaticResource MutedText}" FontSize="11" />
+                                <TextBlock Text="{Binding TemperatureText}" Foreground="{StaticResource AccentBrush}"
+                                           FontSize="22" FontWeight="SemiBold" FontFamily="Consolas" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <TextBlock Text="{Binding ThrottleText}" Margin="0,12,0,0" FontSize="12"
+                                   FontWeight="SemiBold" TextWrapping="Wrap"
+                                   Foreground="{StaticResource WarningBrush}"
+                                   Visibility="{Binding Throttled, Converter={StaticResource BoolToVis}}" />
+
+                        <TextBlock Text="{Binding ThermalStatusText}" Style="{StaticResource MutedText}"
+                                   Margin="0,10,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}" Margin="0,10,0,0"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Error}" Foreground="{StaticResource FailedBrush}" Margin="0,6,0,0"
+                                   TextWrapping="Wrap"
+                                   Visibility="{Binding Error, Converter={StaticResource EmptyToVisibility}}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Per-thread + result -->
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Per-thread utilisation" Style="{StaticResource CardTitle}" Margin="0,0,0,8" />
+                            <ItemsControl ItemsSource="{Binding ThreadLoads}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="34" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="48" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="core" Style="{StaticResource MutedText}"
+                                                       FontSize="11" VerticalAlignment="Center" />
+                                            <ProgressBar Grid.Column="1" Style="{StaticResource ThinProgress}"
+                                                         Minimum="0" Maximum="100" Value="{Binding Mode=OneWay}" />
+                                            <TextBlock Grid.Column="2" HorizontalAlignment="Right"
+                                                       Text="{Binding Mode=OneWay, StringFormat={}{0:0.#}%}"
+                                                       Style="{StaticResource MutedText}" FontFamily="Consolas"
+                                                       FontSize="11" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Result" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding ResultText}" Style="{StaticResource BodyText}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="How this is judged" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Text="Load, clock and the performance-limit flag are read from Windows processor counters while the workload runs — they are measurements, not targets. High utilisation is what the test asks for, so it is reported as a measurement and never as a defect on its own. If temperature cannot be read, the thermal limit is stated as inactive rather than implied."
+                                       Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -213,6 +213,11 @@ public sealed class MainViewModel : ObservableObject
             ["speakers"] = new SpeakersViewModel(),
             ["microphone"] = new MicrophoneViewModel(),
             ["camera"]   = new CameraViewModel(),
+            ["cpu"]      = new CpuStressViewModel(),
+            ["gpu"]      = new GpuStressViewModel(),
+            ["ram"]      = new RamStressViewModel(),
+            ["fan"]      = new FanViewModel(),
+            ["thermal"]  = new ThermalViewModel(),
         };
 
         foreach (var d in NavDefinitions)

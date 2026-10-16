@@ -166,7 +166,7 @@ delivered.`; microphone honestly reports `Windows reports no active audio captur
 
 ---
 
-## Phase 4 — Performance and cooling
+## Phase 4 — Performance and cooling — ✓ COMPLETE
 
 - **CPU:** bounded multi-threaded workload, configurable duration (default conservative), progress,
   cancel, safety limits (temperature/EC/elapsed) that stop or warn, metrics recorded.
@@ -181,6 +181,53 @@ delivered.`; microphone honestly reports `Windows reports no active audio captur
 
 **Acceptance:** cancel returns within ~1 s and leaves CPU load back to idle; workload never exceeds
 its duration; no partial allocation survives cancel/fault.
+
+### 4.1 Acceptance — measured evidence
+
+| Criterion | Result |
+| --- | --- |
+| Cancel returns within ~1 s, load back to idle | ✅ **89 % → 2.8 % in 0.6 s**, clock 3829 → 1200 MHz (Windows counters sampled independently of the app) |
+| Workload never exceeds its duration | ✅ deadline re-checked every loop iteration, not on a timer that could be starved |
+| No partial allocation survives cancel/fault | ✅ `finally` releases the block, collects, then reports; verified `The allocated block has been released` |
+| Progress and cancellation are live | ✅ progress, elapsed, load, clock, per-thread bars all update during a run |
+| Defaults are conservative | ✅ 30 s duration, 7 of 8 threads (leaves one free for the UI) |
+| Thermal limit only claims to be armed when it is | ✅ states *NOT armed — needs administrator rights* rather than implying protection |
+| Fan control withheld without a documented, restorable method | ✅ observation mode with the reason printed on screen |
+| `Unsupported` used only when truly absent | ✅ fan RPM `Unsupported`; temperature `Permission Required` (distinct, and elevation is named as the remedy) |
+
+### 4.2 What this machine actually exposes
+
+Read before implementation so honesty is grounded in fact rather than assumption:
+
+| Sensor | Source | State here |
+| --- | --- | --- |
+| CPU utilisation / clock (per-thread) | `Win32_PerfFormattedData_Counters_ProcessorInformation` | ✅ available — load, `ActualFrequency`, `PerformanceLimitFlags` |
+| CPU temperature | `MSAcpi_ThermalZoneTemperature` (`root\wmi`) | ⚠ **Access denied** → `Permission Required` (needs elevation) |
+| Fan RPM | `Win32_Fan` | ⛔ 0 rows → `Unsupported` |
+| GPU adapters | `Win32_VideoController` | ✅ Iris Xe + Remote Display Adapter |
+| GPU engine utilisation / memory | `GPUPerformanceCounters` (`GPUEngine`, `GPUAdapterMemory`) | ✅ available for the physical adapter; **not** for the indirect display |
+| Free/total RAM | `Win32_OperatingSystem` | ✅ available |
+
+### 4.3 Defects found while verifying
+
+- Temperature was reported `Unsupported — firmware does not expose a thermal zone` while Windows
+  was actually answering *Access denied*; WMI raises that as `ManagementException`, so the wrong
+  catch block handled it. Added `IsAccessDenied()` — now `Permission Required`, and the UI names
+  elevation as the remedy instead of telling the technician it is impossible.
+- The UI asserted *"a performance limit is in effect"* while the clock was boosting to 3829 MHz.
+  `PerformanceLimitFlags = 2` is reported at idle too, so a non-zero flag is not evidence of active
+  throttling → the raw value is surfaced and clock-vs-max is given as the judgement.
+- A GPU card was named **Microsoft** instead of *Microsoft Remote Display Adapter* (first word only
+  from a split) → split on the `is an indirect` marker instead.
+- After a run ended the tiles still read `81.8 % CPU load` with nothing qualifying it → added a
+  caption that says *live* during a run and *last sample … idle again now* afterwards.
+- `TextBox`/`ComboBox` rendered in OS light chrome on the dark theme (no style existed) → dark
+  templates added; verified on CPU, RAM and the pre-existing Display page.
+- Clipped text: the amber throttle line and the thermal source names both needed
+  `TextWrapping="Wrap"`.
+- Build breaks: `Task[]` has no `Wait(TimeSpan)` (→ `Task.WaitAll`); `ReadCpu(out _)` bound to a
+  `_` **parameter** of the enclosing Timer lambda rather than a discard (→ named `out`);
+  `SensorState` had no `Label()` extension.
 
 ---
 

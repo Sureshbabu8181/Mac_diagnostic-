@@ -13,7 +13,8 @@
 **Phase 1 — Foundation and working dashboard: COMPLETE and verified.**
 **Phase 2 — Input and display: COMPLETE and verified.**
 **Phase 3 — Multimedia (speakers, microphone, camera): COMPLETE and verified.**
-Phases 4–7 not started.
+**Phase 4 — Performance and cooling (CPU/GPU/RAM stress, fan, thermal): COMPLETE and verified.**
+Phases 5–7 not started.
 
 ---
 
@@ -75,11 +76,34 @@ Phases 4–7 not started.
 | Camera released on Stop / page exit | ✅ | `Stopped. 197 frames delivered.` |
 | Manual picture confirmation left unchecked until the user acts | ○ | `○ Technician confirmed a clear picture` observed in UIA |
 
+### Phase 4 (complete)
+
+| Feature | Status | Evidence |
+| --- | --- | --- |
+| Bounded multi-threaded CPU workload, configurable duration | ✅ | ran 7 workers, 88.3 % average load over 2.5 s |
+| Live utilisation + clock sampled during the run | ✅ | `92.4 %` load, `3829 MHz` (idle 907 MHz) |
+| Per-thread utilisation bars, one per logical processor | ✅ | 8 bars at 9 % / 15 % / 27 % … during load |
+| Cancel returns to idle in well under 1 s | ✅ | **89 % → 2.8 % within 0.6 s**, clock back to 1.2 GHz |
+| Workload never exceeds its requested duration | ✅ | deadline checked every loop iteration |
+| Thermal safety limit arms only when temperature is readable | ✅ | `Thermal limit is NOT armed — needs administrator rights` |
+| Performance-limit flag reported as measured, raw value | ✅ | `flags = 2`; wording states it is a capability state |
+| GPU adapter inventory + honest unsupported rows | ✅ | Iris Xe `telemetry available`; Remote Display `unsupported` |
+| Live GPU engine utilisation + memory counters | ✅ | `engine utilisation 0 %` → `4 %` under render load |
+| Bounded rendering workload with progress + cancel | ✅ | 400 primitives through WPF composition; cancel stopped it |
+| RAM pattern fill, read-back verification, mismatch report | ✅ | `All 256 MB verified correctly across 2 pass(es) in 1.8 s` |
+| Allocation refused when it would push the machine into paging | ✅ | `7.1 GB available; this allocation is within the safe half` |
+| Block released on completion, cancel and fault | ✅ | `The allocated block has been released` |
+| Fan max-speed test withheld without a vendor control method | ✅ | observation mode + full on-screen explanation |
+| 10-second cooling observation (load/clock/temperature) | ✅ | `Observation complete. Nothing was written to the hardware.` |
+| Fan RPM honestly `Unsupported` (no tachometer exposed) | ✅ | `Win32_Fan reports no fan` |
+| Temperature distinguishes *needs elevation* from *not exposed* | ✅ | `Permission Required`, not `Unsupported` |
+| Sensor dashboard with source on every row | ✅ | 8 rows, each naming its WMI source |
+
 ### Not implemented yet
 
-Phases 4-7: CPU/GPU/RAM stress, fan and thermal, storage health, battery, network,
-Bluetooth, USB, system/Windows health, automatic diagnostics, history/reports. These
-currently render an explicit *Not yet implemented* placeholder that measures nothing.
+Phases 5-7: storage health, battery, network, Bluetooth, USB, system/Windows health,
+automatic diagnostics, history/reports. These currently render an explicit
+*Not yet implemented* placeholder that measures nothing.
 
 Note on Phase 3: **speakers** and **camera** were exercised against real endpoints in this
 session (playback reported `Playing Left route on Remote Audio`; camera delivered 382 frames
@@ -110,6 +134,36 @@ and driving a navigation click with `System.Windows.Automation`:
 | 5 | Clicking a nav item changes the page | ✅ invoked *System Information* → placeholder shown |
 | 6 | Placeholder states it runs no measurement | ✅ |
 | 7 | Window resize / DPI | ✅ 1180×760 at PerMonitorV2 |
+
+### Phase 4 verification
+
+Driven by the same `System.Windows.Automation` clicks plus independent Windows
+counter sampling, so the numbers come from Windows rather than from the app:
+
+| # | Check | Result |
+| --- | --- | --- |
+| 1 | Build clean | ✅ 0 warnings, 0 errors |
+| 2 | CPU workload raises measured load | ✅ 88–92 % with 7 workers (idle 5 %) |
+| 3 | Clock actually boosts under load | ✅ 907 MHz idle → 3829 MHz loaded |
+| 4 | Cancel returns to idle in ~1 s | ✅ **89 % → 2.8 % within 0.6 s** |
+| 5 | Live progress + per-thread bars update | ✅ 00:04, 8 bars changing during run |
+| 6 | RAM test verifies and releases | ✅ 256 MB × 2 passes, 1.8 s, released |
+| 7 | GPU render load drives engine utilisation | ✅ 0 % idle → 4 % rendering |
+| 8 | Fan test runs in observation mode only | ✅ completed, nothing written to hardware |
+| 9 | Temperature reports *Permission Required* | ✅ elevation identified as the remedy |
+| 10 | Fan RPM reports *Unsupported* | ✅ `Win32_Fan reports no fan` |
+| 11 | Dropdown selection binds to duration | ✅ chose 10 → `up to 10 s` in status text |
+| 12 | Dark input chrome (TextBox/ComboBox) | ✅ themed; Display page unchanged otherwise |
+
+**Real values observed during a CPU run (proving live reads, not mock data):**
+
+```
+Run: 7 workers, 10 s requested
+Average load 88.3 %   peak clock 3830 MHz   temperature unavailable (needs elevation)
+Per-thread during load: 9, 15, 15, 27, 9, 27, 3, 3, 14 %
+After cancel (+0.6 s): 2.8 % load, 1200 MHz  (Windows counters, sampled independently)
+GPU: Intel Iris Xe shared memory 781 MB, engine utilisation 0 % → 4 % while rendering
+```
 
 **Real values observed on this machine (proving live reads, not mock data):**
 
@@ -156,6 +210,21 @@ Battery 95% · AC adapter · not charging
 | 23 | A failed capture left a 46-byte header-only `.wav` that looked like a real recording | the file was created before capture started and kept on the error path | the header-only file is deleted on a failed start |
 | 24 | `AudioService.cs` rendered mojibake (`right — different pitches`) | a PowerShell `Get-Content`/`Set-Content` truncation re-encoded UTF-8 as ANSI | damaged sequences repaired; remaining non-ASCII verified as intentional |
 
+## Errors found and fixed during Phase 4
+
+| # | Error | Cause | Fix |
+| --- | --- | --- | --- |
+| 25 | Temperature reported `Unsupported — firmware does not expose a thermal zone` even though Windows answered *Access denied* | WMI raises refusal as `ManagementException`, not `UnauthorizedAccessException`, so the wrong branch caught it | `IsAccessDenied()` added; now reports `Permission Required` and names elevation as the remedy |
+| 26 | UI claimed *"a processor performance limit is in effect"* while the clock was boosting to 3829 MHz | `PerformanceLimitFlags = 2` is also present at idle here, so a non-zero flag is not proof of active throttling | raw `flags = N` surfaced with wording that points at clock-vs-max as the real judgement |
+| 27 | GPU card read **Microsoft** instead of *Microsoft Remote Display Adapter* | name was taken from `detail.Split(' ')[0..2].FirstOrDefault()` → first word only | split on the `is an indirect` marker so the whole name survives |
+| 28 | After a run finished, the tiles still showed `81.8 % CPU load` with no qualifier | readings were deliberately frozen at the last sample but labelled as if live | `ReadingsCaption` now reads *live…* during a run and *last sample … idle again now* after |
+| 29 | `TextBox` and `ComboBox` rendered in OS **light** chrome on the dark theme | no style existed; WPF default templates use system light colours | dark `TextBox`/`ComboBox`/`ComboBoxItem` templates added to `Theme.xaml`; verified on CPU, RAM and Display pages |
+| 30 | Amber throttle line ran past the card edge | `TextWrapping` missing on that `TextBlock` | `TextWrapping="Wrap"` added |
+| 31 | Sensor rows clipped source names mid-word (`Win32_PerfFormattedData_Cou`) | fixed-width row with no wrapping | `TextWrapping="Wrap"` on the thermal row template |
+| 32 | `Task[].Wait(TimeSpan)` does not exist | instance `Wait` on an array is not a member | `Task.WaitAll(tasks, timeout)` |
+| 33 | `PerformanceService.ReadCpu(out _)` bound to a **variable** named `_` | the enclosing `Timer` lambda already had a `_` parameter, shadowing the discard | used a named `out string throttleExplain` |
+| 34 | `SensorState` had no `Label()` | only `TestStatus` had the extension | `SensorStateExtensions.Label()` added (`Permission Required` vs `Unsupported`) |
+
 ---
 
 ## Known limitations
@@ -191,9 +260,9 @@ See [docs/Known-Limitations.md](docs/Known-Limitations.md). Headline items:
 | 1 | Foundation + dashboard | ✅ done & verified |
 | 2 | Display, keyboard, touchpad/mouse | ✅ done & verified |
 | 3 | Speakers, microphone, camera | ✅ done & verified |
-| 4 | CPU/GPU/RAM stress, fan, thermal | ⬜ not started |
+| 4 | CPU/GPU/RAM stress, fan, thermal | ✅ done & verified |
 | 5 | Storage, battery, network, Bluetooth, USB, system/Windows health | ⬜ not started |
 | 6 | Automatic diagnostics, history, CSV/HTML/PDF | ⬜ not started |
 | 7 | Hardening, profiling, packaging, final docs | ⬜ not started |
 
-**Never claimed:** the application is not finished. Only Phases 1-3 are implemented and verified.
+**Never claimed:** the application is not finished. Only Phases 1-4 are implemented and verified.

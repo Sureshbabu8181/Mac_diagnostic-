@@ -1,0 +1,89 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.RamStressView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:WindowsLaptopDiagnostics.ViewModels">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,28">
+
+            <TextBlock Text="RAM Stress Test" Style="{StaticResource TitleText}" />
+            <TextBlock Text="Pattern fill, read-back verification, and guaranteed release — not a bootable memory diagnostic"
+                       Style="{StaticResource MutedText}" Margin="0,2,0,14" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="340" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Allocation size (MB)" Style="{StaticResource MutedText}" FontSize="11" />
+                                <ComboBox ItemsSource="{Binding Source={x:Static vm:RamStressViewModel.SizeOptionsMb}}"
+                                          SelectedItem="{Binding Megabytes}" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Passes" Style="{StaticResource MutedText}" FontSize="11" />
+                                <ComboBox ItemsSource="{Binding Source={x:Static vm:RamStressViewModel.PassOptions}}"
+                                          SelectedItem="{Binding Passes}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Text="{Binding SizeHint}" Style="{StaticResource MutedText}" Margin="0,6,0,0"
+                                   TextWrapping="Wrap" />
+
+                        <Separator Background="{StaticResource BorderBrush}" Margin="0,14,0,10" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Start test" Style="{StaticResource AccentButton}"
+                                    Command="{Binding StartCommand}" Padding="14,7" />
+                            <Button Content="Cancel" Style="{StaticResource GhostButton}" Margin="10,0,0,0"
+                                    Command="{Binding CancelCommand}" Padding="14,7" />
+                            <Button Content="Reset" Style="{StaticResource GhostButton}" Margin="10,0,0,0"
+                                    Command="{Binding ResetCommand}" Padding="14,7" />
+                        </StackPanel>
+
+                        <StackPanel Margin="0,16,0,0">
+                            <DockPanel>
+                                <TextBlock Text="Progress" Style="{StaticResource SectionHeader}" DockPanel.Dock="Left" />
+                                <TextBlock Text="{Binding ElapsedText}" Style="{StaticResource MutedText}"
+                                           HorizontalAlignment="Right" FontFamily="Consolas" />
+                            </DockPanel>
+                            <ProgressBar Style="{StaticResource ThinProgress}" Height="8" Margin="0,6,0,0"
+                                         Minimum="0" Maximum="100" Value="{Binding ProgressPercent, Mode=OneWay}" />
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}" Margin="0,12,0,0"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Error}" Foreground="{StaticResource FailedBrush}" Margin="0,6,0,0"
+                                   TextWrapping="Wrap"
+                                   Visibility="{Binding Error, Converter={StaticResource EmptyToVisibility}}" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Verification result" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding ResultText}" Style="{StaticResource BodyText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="How this is judged" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                            <TextBlock Text="Each megabyte is filled with a deterministic pattern and read back immediately, so a mismatch is pinned to a specific location rather than reported as 'somewhere'. A clean run proves only that the memory this application allocated and addressed behaved correctly — it cannot examine memory the OS reserved, memory above the usable limit, or anything a boot-time diagnostic would reach. That is why a mismatch is called a fault candidate worth retesting, not a condemned module."
+                                       Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
