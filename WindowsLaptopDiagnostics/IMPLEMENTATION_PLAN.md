@@ -306,7 +306,7 @@ Read before implementation so honesty is grounded in fact rather than assumption
 
 ---
 
-## Phase 6 — Workflow and reports
+## Phase 6 — Workflow and reports — ✅ COMPLETE
 
 - Automatic diagnostics: category selection, per-test purpose, sequence with pauses, skip
   unsupported with reason, per-test state, cancel with cleanup, summary counts
@@ -314,9 +314,49 @@ Read before implementation so honesty is grounded in fact rather than assumption
 - History: session store, recent results, search/filter/sort, detail inspection.
 - Export: CSV, self-contained HTML, PDF via print-to-PDF.
 - Privacy: typed text, audio, video, sensitive IDs excluded unless explicitly selected.
+- Added on request: submit a summary to a Google Sheet through a Google Form, and
+  email the report with its CSV attached.
 
 **Acceptance:** a full run produces a correct summary; export opens outside the app; history
 survives restart.
+
+### 6.1 Acceptance results — met
+
+| Criterion | Result |
+| --- | --- |
+| Full run produces a correct summary | ✅ `7 passed · 1 unsupported · 7 of 8 checks actually executed` |
+| Skipped ≠ passed | ✅ thermal is `Unsupported`, excluded from `Executed` |
+| Export opens outside the app | ✅ HTML rendered in a browser (0 external refs); CSV parsed by a reader |
+| History survives restart | ✅ kill + relaunch → `8 result(s) · stored at …\history.json` |
+| Cancel honours between steps and records the rest | ✅ remaining steps recorded `Cancelled`, never dropped |
+| Interactive checks never auto-run | ✅ 6 interactive + 4 stress steps listed with reasons, recorded `Not Run` |
+| Google Form failure is never dressed as success | ✅ bogus form → **`Google answered 404 Not Found`** |
+| SMTP password never written to disk | ✅ `share.json` has no `Password` key |
+
+### 6.2 What the orchestrator will and will not run
+
+Deliberate scope: **8 of 18 steps are automatable** (system, windows, storage, battery,
+USB, Bluetooth, network-addressing, thermal). The other 10 are listed with the reason they
+need a human — a colour pattern cannot be judged, a key press cannot be synthesised as a
+pass, and a stress test needs a technician to pick a duration. Recording them `Not Run`
+with that reason is the only honest outcome.
+
+Network stays a two-tier opt-in: the step reads addressing by default and sends nothing;
+the gateway probe behind its own checkbox (off by default) still stops before internet.
+
+### 6.3 Defects fixed (52–60)
+
+| # | Error | Cause | Fix |
+| --- | --- | --- | --- |
+| 52 | XAML comments with `--` rejected (`MC3000`) | decorative `<!-- ---- section ---- -->` separators | replaced with plain words |
+| 53 | `Visibility` missing on `Run` (`MC3072`) | `Run` is a `FrameworkContentElement`, not a `UIElement` | confirm label moved to its own `TextBlock` |
+| 54 | `PasswordBox` binding silently did nothing | `Password.Password` is not a dependency property | pushed from the `PasswordChanged` event |
+| 55 | Every history row claimed *user confirmed* | label hardcoded in the template | gated on `UserConfirmed` |
+| 56 | Exported HTML printed literal `&lt;br&gt;` | `H()` escaped the intended separators | escape values, then join with raw `<br>` |
+| 57 | `PrintQueue.CreateXpsDocumentWriter()` does not exist | guessed API | verified against the ref assembly → `PrintDialog.PrintDocument` |
+| 58 | `AsyncRelayCommand.RaiseCanExecuteChanged` missing | only `RelayCommand` has it | `CommandManager.InvalidateRequerySuggested()` |
+| 59 | Network flag out of scope / `Task.Run` lambda could not `await` | parameter not passed; lambda not `async` | flag passed through; lambda marked `async` |
+| 60 | `StatusToBrush` bound to a string status | history stores the label, not the enum | `StatusTextToBrushConverter`, neutral-grey fallback |
 
 ---
 

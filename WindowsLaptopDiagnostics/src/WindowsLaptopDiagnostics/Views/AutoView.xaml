@@ -1,0 +1,133 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.AutoView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Margin="28,22,28,28">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="380" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- selection -->
+        <Border Grid.Column="0" Style="{StaticResource Card}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top">
+                    <TextBlock Text="Automatic Diagnostics" Style="{StaticResource TitleText}" />
+                    <TextBlock Text="Only checks that can genuinely be automated are run. Interactive and stress checks are listed with the reason they are skipped."
+                               Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,2,0,12" />
+
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Automatable only" Style="{StaticResource GhostButton}"
+                                Command="{Binding SelectAutomatableCommand}" Padding="10,5" FontSize="11" />
+                        <Button Content="All" Style="{StaticResource GhostButton}" Margin="8,0,0,0"
+                                Command="{Binding SelectAllCommand}" Padding="10,5" FontSize="11" />
+                        <Button Content="None" Style="{StaticResource GhostButton}" Margin="8,0,0,0"
+                                Command="{Binding SelectNoneCommand}" Padding="10,5" FontSize="11" />
+                    </StackPanel>
+
+                    <CheckBox IsChecked="{Binding IncludeNetworkProbe}" Margin="0,12,0,0"
+                              Foreground="{StaticResource TextBrush}" FontSize="12">
+                        <TextBlock Text="Send a gateway probe for the network check (stays inside your network)"
+                                   TextWrapping="Wrap" />
+                    </CheckBox>
+                </StackPanel>
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+                    <ItemsControl ItemsSource="{Binding Steps}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}"
+                                          IsEnabled="{Binding Step.Automatable}"
+                                          Margin="0,0,0,7">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextBrush}" FontSize="13"
+                                                       DockPanel.Dock="Left" />
+                                            <TextBlock Text="{Binding Category}" HorizontalAlignment="Right"
+                                                       Style="{StaticResource MutedText}" FontSize="11" />
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding Purpose}" Style="{StaticResource MutedText}"
+                                                   FontSize="11" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Availability}" FontSize="11"
+                                                   Foreground="{StaticResource UnsupportedBrush}"
+                                                   TextWrapping="Wrap" Margin="0,2,0,0"
+                                                   Visibility="{Binding Availability, Converter={StaticResource EmptyToVisibility}}" />
+                                    </StackPanel>
+                                </CheckBox>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <!-- run -->
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="12" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Style="{StaticResource Card}">
+                <StackPanel>
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Content="Start run" Style="{StaticResource AccentButton}"
+                                    Command="{Binding RunCommand}" Padding="16,7" />
+                            <Button Content="Cancel" Style="{StaticResource GhostButton}" Margin="10,0,0,0"
+                                    Command="{Binding CancelCommand}" Padding="14,7" />
+                        </StackPanel>
+                        <TextBlock Text="Run" Style="{StaticResource CardTitle}" VerticalAlignment="Center" />
+                    </DockPanel>
+
+                    <TextBlock Text="{Binding SummaryText}" FontSize="17" FontWeight="SemiBold"
+                               Foreground="{Binding SummaryColor}" Margin="0,10,0,0" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SummaryDetail}" Style="{StaticResource BodyText}"
+                               TextWrapping="Wrap" Margin="0,4,0,0" />
+
+                    <ProgressBar Style="{StaticResource ThinProgress}" Height="6" Margin="0,10,0,0"
+                                 Minimum="0" Maximum="{Binding Total}" Value="{Binding Completed, Mode=OneWay}"
+                                 Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Text="{Binding ProgressText}" Style="{StaticResource MutedText}" FontSize="11"
+                               Margin="0,4,0,0" />
+
+                    <TextBlock Text="{Binding Error}" Foreground="{StaticResource FailedBrush}"
+                               TextWrapping="Wrap" Margin="0,8,0,0"
+                               Visibility="{Binding Error, Converter={StaticResource EmptyToVisibility}}" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="2" Style="{StaticResource Card}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Results this run" Style="{StaticResource CardTitle}"
+                               Margin="0,0,0,8" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Rows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="5"
+                                            Padding="10,7" Margin="0,0,0,6">
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource TextBrush}" DockPanel.Dock="Left" />
+                                                <TextBlock Text="{Binding StatusText}" HorizontalAlignment="Right"
+                                                           FontWeight="SemiBold" FontSize="12"
+                                                           Foreground="{Binding StatusColor}" />
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource MutedText}"
+                                                       FontSize="12" TextWrapping="Wrap" Margin="0,3,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

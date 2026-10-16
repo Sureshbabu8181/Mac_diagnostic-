@@ -23,6 +23,35 @@ public sealed class StatusToBrushConverter : IValueConverter
         Binding.DoNothing;
 }
 
+/// <summary>
+/// Converts a status *label string* (what history stores) to a status-colored
+/// brush. Unknown labels fall back to neutral grey rather than throwing, so a
+/// malformed row can never crash a list render.
+/// </summary>
+public sealed class StatusTextToBrushConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var status = (value as string) switch
+        {
+            "Passed" => TestStatus.Passed,
+            "Warning" => TestStatus.Warning,
+            "Failed" => TestStatus.Failed,
+            "Error" => TestStatus.Error,
+            "Unsupported" => TestStatus.Unsupported,
+            "Cancelled" => TestStatus.Cancelled,
+            "Running" => TestStatus.Running,
+            "Ready" => TestStatus.Ready,
+            _ => TestStatus.NotRun,
+        };
+        var color = (Color)ColorConverter.ConvertFromString(status.ColorHex());
+        return new SolidColorBrush(color);
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        Binding.DoNothing;
+}
+
 /// <summary>Converts a TestStatus to its display label string.</summary>
 public sealed class StatusToLabelConverter : IValueConverter
 {

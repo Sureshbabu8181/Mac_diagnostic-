@@ -10,7 +10,12 @@
     <AssemblyName>WindowsLaptopDiagnostics</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <NoWarn>$(NoWarn);CA1416</NoWarn>
+    <!-- CA1416: the whole assembly is Windows-only (WPF + WMI), so the
+         platform-compatibility analyser has nothing useful to say.
+         SYSLIB0014: System.Net.Mail.SmtpClient is marked obsolete, but it ships
+         in the shared framework and needs no extra dependency; the email path
+         reports every SMTP failure verbatim rather than hiding behind it. -->
+    <NoWarn>$(NoWarn);CA1416;SYSLIB0014</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

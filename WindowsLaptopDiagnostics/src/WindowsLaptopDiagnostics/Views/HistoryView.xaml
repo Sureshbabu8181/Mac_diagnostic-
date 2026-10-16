@@ -1,0 +1,210 @@
+<UserControl x:Class="WindowsLaptopDiagnostics.Views.HistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,22,28,28">
+
+            <TextBlock Text="Test History &amp; Reports" Style="{StaticResource TitleText}" />
+            <TextBlock Text="Every row was written because a check actually ran and produced it - exports contain nothing else"
+                       Style="{StaticResource MutedText}" Margin="0,2,0,14" TextWrapping="Wrap" />
+
+            <!-- filters and list -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Content="Refresh" Style="{StaticResource GhostButton}"
+                                    Command="{Binding RefreshCommand}" Padding="12,6" />
+                            <Button Content="Clear history" Style="{StaticResource GhostButton}" Margin="8,0,0,0"
+                                    Command="{Binding ClearCommand}" Padding="12,6" />
+                        </StackPanel>
+                        <TextBlock Text="Recorded results" Style="{StaticResource CardTitle}"
+                                   VerticalAlignment="Center" />
+                    </DockPanel>
+
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="170" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="130" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBox Grid.Column="0" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Search test name, status, summary or a reading value" />
+                        <ComboBox Grid.Column="2" ItemsSource="{Binding StatusOptions}"
+                                  SelectedItem="{Binding StatusFilter}" ToolTip="Filter by status" />
+                        <ComboBox Grid.Column="4" ItemsSource="{Binding CategoryOptions}"
+                                  SelectedItem="{Binding CategoryFilter}" ToolTip="Filter by category" />
+                        <ComboBox Grid.Column="6" ItemsSource="{Binding WindowOptions}"
+                                  SelectedIndex="{Binding WindowIndex}" ToolTip="Limit to a recent window" />
+                    </Grid>
+
+                    <ProgressBar Style="{StaticResource ThinProgress}" Height="6" Margin="0,10,0,0"
+                                 IsIndeterminate="{Binding IsBusy}" />
+
+                    <ItemsControl ItemsSource="{Binding Entries}" Margin="0,10,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="6"
+                                        Padding="11,8" Margin="0,0,0,7">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <TextBlock Text="{Binding TestName}" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextBrush}" DockPanel.Dock="Left" />
+                                            <TextBlock Text="{Binding Status}" HorizontalAlignment="Right"
+                                                       FontWeight="SemiBold" FontSize="12"
+                                                       Foreground="{Binding Status, Converter={StaticResource StatusTextToBrush}}" />
+                                        </DockPanel>
+                                        <TextBlock FontSize="11" Style="{StaticResource MutedText}" Margin="0,3,0,0">
+                                            <Run Text="{Binding WhenLocal, Mode=OneWay, StringFormat=MM-dd HH:mm:ss}" />
+                                            <Run Text="·" />
+                                            <Run Text="{Binding Category, Mode=OneWay}" />
+                                            <Run Text="·" />
+                                            <Run Text="{Binding DurationSeconds, Mode=OneWay, StringFormat={}{0:0.#} s}" />
+                                        </TextBlock>
+                                        <TextBlock Text="user confirmed" FontSize="11"
+                                                   Style="{StaticResource MutedText}" Margin="0,1,0,0"
+                                                   Visibility="{Binding UserConfirmed, Converter={StaticResource BoolToVis}}" />
+                                        <TextBlock Text="{Binding Summary}" Style="{StaticResource BodyText}"
+                                                   TextWrapping="Wrap" Margin="0,5,0,0" />
+                                        <ItemsControl ItemsSource="{Binding Readings}" Margin="0,4,0,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontFamily="Consolas" FontSize="11"
+                                                               Foreground="{StaticResource MutedBrush}">
+                                                        <Run Text="{Binding Key, Mode=OneWay}" />
+                                                        <Run Text="=" />
+                                                        <Run Text="{Binding Value, Mode=OneWay}" />
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <ItemsControl ItemsSource="{Binding Warnings}" Margin="0,4,0,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}" FontSize="11" TextWrapping="Wrap"
+                                                               Foreground="{StaticResource WarningBrush}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <ItemsControl ItemsSource="{Binding Errors}" Margin="0,4,0,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}" FontSize="11" TextWrapping="Wrap"
+                                                               Foreground="{StaticResource FailedBrush}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="{Binding StatusText}" Style="{StaticResource MutedText}" FontSize="11"
+                               TextWrapping="Wrap" Margin="0,6,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- export and share -->
+            <Grid Margin="0,12,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Export" Style="{StaticResource CardTitle}" Margin="0,0,0,8" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="CSV" Style="{StaticResource AccentButton}"
+                                    Command="{Binding ExportCsvCommand}" Padding="16,7" />
+                            <Button Content="HTML" Style="{StaticResource GhostButton}" Margin="8,0,0,0"
+                                    Command="{Binding ExportHtmlCommand}" Padding="16,7" />
+                            <Button Content="PDF" Style="{StaticResource GhostButton}" Margin="8,0,0,0"
+                                    Command="{Binding ExportPdfCommand}" Padding="16,7" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0"
+                                   Text="CSV and HTML are written to the Desktop and opened for you. PDF goes through Windows print-to-PDF, so you choose the destination - pick 'Microsoft Print to PDF' to save a file." />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button Content="Save settings" Style="{StaticResource GhostButton}"
+                                    Command="{Binding SaveSettingsCommand}" DockPanel.Dock="Right"
+                                    Padding="10,5" FontSize="11" />
+                            <TextBlock Text="Share" Style="{StaticResource CardTitle}" VerticalAlignment="Center" />
+                        </DockPanel>
+
+                        <Expander Header="Google Form → Google Sheet" Margin="0,8,0,0"
+                                  Foreground="{StaticResource TextBrush}">
+                            <StackPanel Margin="0,8,0,0">
+                                <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap"
+                                           Text="Link a Google Form to a Sheet, then paste its /formResponse URL below and one Column=entryId line per field. No Google login or API key is used - the form must accept responses from anyone with the link." />
+                                <TextBox Margin="0,8,0,0" Text="{Binding FormUrl, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="https://docs.google.com/forms/d/e/XXXX/formResponse" />
+                                <TextBox Margin="0,6,0,0" Height="76"
+                                         AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                         Text="{Binding FormMapping, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="One per line: Machine=123456  Status=123457" />
+                                <Button Content="Send summary to Sheet" Style="{StaticResource AccentButton}"
+                                        Command="{Binding SendFormCommand}" Margin="0,8,0,0" Padding="14,6" />
+                            </StackPanel>
+                        </Expander>
+
+                        <Expander Header="Email the report" Margin="0,10,0,0"
+                                  Foreground="{StaticResource TextBrush}">
+                            <StackPanel Margin="0,8,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="80" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Text="{Binding SmtpHost, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="SMTP host" />
+                                    <TextBox Grid.Column="2" Text="{Binding SmtpPort, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Port" />
+                                </Grid>
+                                <CheckBox IsChecked="{Binding SmtpSsl}" Margin="0,6,0,0"
+                                          Foreground="{StaticResource TextBrush}" Content="Use TLS/SSL" />
+                                <TextBox Margin="0,6,0,0" Text="{Binding SmtpUser, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Username (leave blank if the server needs none)" />
+                                <PasswordBox Margin="0,6,0,0" PasswordChanged="OnPasswordChanged"
+                                             ToolTip="Password - kept in memory only, never written to disk" />
+                                <TextBox Margin="0,6,0,0" Text="{Binding SmtpFrom, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="From address" />
+                                <TextBox Margin="0,6,0,0" Text="{Binding SmtpTo, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="To address" />
+                                <TextBox Margin="0,6,0,0" Text="{Binding SmtpSubject, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Subject" />
+                                <Button Content="Send report by email" Style="{StaticResource AccentButton}"
+                                        Command="{Binding SendEmailCommand}" Margin="0,8,0,0" Padding="14,6" />
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                <StackPanel>
+                    <TextBlock Text="How this is judged" Style="{StaticResource CardTitle}" Margin="0,0,0,6" />
+                    <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                               Text="History is written to disk the moment a check finishes, so a crash cannot lose what was already measured; the newest 500 results are kept. Exports are built from those records and nothing else - no column is invented and an empty reading stays empty rather than becoming zero. Sharing is opt-in and never auto-addressed: Google Forms and SMTP both need their destination supplied, every transport answer is reported verbatim, and an ambiguous response is reported as unverified rather than as a success. The SMTP password is held in memory only, so a copied settings file cannot send mail on your behalf. Skipped, unsupported and cancelled checks are recorded as themselves and are never counted as passing." />
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="{Binding Error}" Foreground="{StaticResource FailedBrush}" TextWrapping="Wrap"
+                       Margin="0,10,0,0"
+                       Visibility="{Binding Error, Converter={StaticResource EmptyToVisibility}}" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

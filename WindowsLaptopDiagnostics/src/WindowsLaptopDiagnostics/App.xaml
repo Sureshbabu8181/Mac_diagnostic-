@@ -10,6 +10,7 @@
             </ResourceDictionary.MergedDictionaries>
 
             <inf:StatusToBrushConverter x:Key="StatusToBrush" />
+    <inf:StatusTextToBrushConverter x:Key="StatusTextToBrush" />
             <inf:StatusToLabelConverter x:Key="StatusToLabel" />
             <inf:InverseBoolConverter x:Key="InverseBool" />
             <inf:BoolToVisibilityConverter x:Key="BoolToVis" />

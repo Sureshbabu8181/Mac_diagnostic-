@@ -137,6 +137,12 @@
                 <DataTemplate DataType="{x:Type vm:WindowsHealthViewModel}">
                     <views:WindowsHealthView />
                 </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:AutoViewModel}">
+                    <views:AutoView />
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
+                    <views:HistoryView />
+                </DataTemplate>
                 <DataTemplate DataType="{x:Type vm:PlaceholderViewModel}">
                     <views:PlaceholderView />
                 </DataTemplate>

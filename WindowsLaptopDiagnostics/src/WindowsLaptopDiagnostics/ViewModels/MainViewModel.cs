@@ -225,6 +225,8 @@ public sealed class MainViewModel : ObservableObject
             ["usb"]      = new UsbViewModel(),
             ["system"]   = new SystemInfoViewModel(),
             ["windows"]  = new WindowsHealthViewModel(),
+            ["auto"]     = new AutoViewModel(),
+            ["history"]  = new HistoryViewModel(),
         };
 
         foreach (var d in NavDefinitions)

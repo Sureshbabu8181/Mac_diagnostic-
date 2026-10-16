@@ -15,7 +15,8 @@
 **Phase 3 — Multimedia (speakers, microphone, camera): COMPLETE and verified.**
 **Phase 4 - Performance and cooling (CPU/GPU/RAM stress, fan, thermal): COMPLETE and verified.**
 **Phase 5 - Additional hardware (storage, battery, network, Bluetooth, USB, system/Windows): COMPLETE and verified.**
-Phases 6-7 not started.
+**Phase 6 - Workflow and reports (auto-diagnostics, history, CSV/HTML/PDF, share): COMPLETE and verified.**
+Phase 7 not started.
 
 ---
 
@@ -123,11 +124,42 @@ Phases 6-7 not started.
 | Device problem codes decoded to plain language | ✅ | `All 197 enumerated devices report ConfigManagerErrorCode = 0` |
 | Read-only servicing state, admin items labelled | ✅ | install `2025-05-23` · 7 updates · *nothing installed or repaired* |
 
+### Phase 6 (complete)
+
+| Feature | Status | Evidence |
+| --- | --- | --- |
+| Automatic diagnostics runs only genuinely automatable checks | ✅ | 8 of 18 selected; interactive/stress steps stay skipped with a reason |
+| Per-step live state during a run | ✅ | 8 rows updated: Passed / Unsupported as they completed |
+| Summary keeps "did not run" out of the pass count | ✅ | `7 passed · 1 unsupported · 7 of 8 checks actually executed` |
+| Unsupported reported, never invented | ✅ | thermal `Unsupported` — *no thermal reading is invented* |
+| Network probe is opt-in inside the orchestrator too | ✅ | `No probe was sent - that is an opt-in` |
+| History written to disk the moment a check finishes | ✅ | `history.json` 7727 bytes after one run |
+| History survives a restart | ✅ | killed + relaunched → `8 result(s) · stored at …history.json` |
+| Search / status / category / time-window filtering | ✅ | four controls, each re-queries the store |
+| CSV export, RFC 4180 quoting | ✅ | `diagnostics_20261016_182543.csv`, 9 lines, commas quoted |
+| Self-contained HTML export (no external refs) | ✅ | 0 `http(s)` refs, 41 real `<br>`, renders outside the app |
+| PDF via Windows print-to-PDF | ✅ | print dialog opened; cancel reported as *no PDF was produced* |
+| Google Form → Google Sheet submission | ✅ | bogus form URL → **`Google answered 404 Not Found`** |
+| Ambiguous Google response reported unverified | ✅ | 200 without confirmation markup → *must not be assumed to have arrived* |
+| Email report with CSV attachment + plain-text alternative | ✅ | SMTP failure surfaced verbatim with the Windows error code |
+| Password guard before any authenticated send | ✅ | *Authentication is enabled but no password was supplied* |
+| SMTP password never written to disk | ✅ | `share.json` contains no `Password` key and not the typed value |
+| Settings persist (minus the password) | ✅ | form URL, entry ids, SMTP host/from/to all reloaded |
+
 ### Not implemented yet
 
-Phases 6-7: automatic diagnostics, history/CSV/HTML/PDF reports, hardening and
-packaging. These currently render an explicit *Not yet implemented* placeholder
-that measures nothing.
+Phase 7: hardening, resource profiling, self-contained publish and final docs.
+
+### What Phase 6 deliberately does not do
+
+- **It does not auto-run interactive or stress checks.** Display, keyboard, touchpad,
+  speakers, microphone, camera, CPU/GPU/RAM stress and fan are listed with the reason
+  they need a human, and are recorded as `Not Run` — never as passing.
+- **It does not create or configure a Google Form.** The `/formResponse` URL and the
+  per-field entry ids must be supplied; neither can be discovered from here.
+- **It does not store the SMTP password.** It lives in memory for the session only.
+- **It does not claim a share arrived.** Google returns no row receipt, so the Sheet
+  itself is the confirmation; anything ambiguous is reported as unverified.
 
 Note on Phase 3: **speakers** and **camera** were exercised against real endpoints in this
 session (playback reported `Playing Left route on Remote Audio`; camera delivered 382 frames
@@ -225,6 +257,57 @@ System  LENOVO 20X1S0WF00 · serial PG033Z8N · BIOS R1JET74W · i5-1135G7 4C/8T
 Windows 197/197 devices ConfigManagerErrorCode = 0 · install 2025-05-23 · 7 updates
 ```
 
+### Phase 6 verification
+
+Driven by `System.Windows.Automation` clicks, plus direct inspection of the files the
+app wrote (so the exports are checked as *files*, not as UI text):
+
+| # | Check | Result |
+| --- | --- | --- |
+| 1 | Build clean | ✅ 0 warnings, 0 errors |
+| 2 | Auto run executes only automatable steps | ✅ 8 of 18 selected ran; interactive/stress skipped with reasons |
+| 3 | Summary excludes skipped from the pass count | ✅ `7 passed · 1 unsupported · 7 of 8 checks actually executed` |
+| 4 | Unsupported reported, not invented | ✅ thermal `Unsupported` · *no thermal reading is invented* |
+| 5 | Network probe stays opt-in inside the orchestrator | ✅ `No probe was sent - that is an opt-in` |
+| 6 | History written immediately, not on exit | ✅ `history.json` = 7727 bytes after the run |
+| 7 | **History survives a restart** | ✅ killed + relaunched → `8 result(s) · stored at …\history.json` |
+| 8 | History readings are the real ones | ✅ AX200 MAC, IP/gateway/DNS, 45000 mWh, 28.6 % wear all present |
+| 9 | CSV export is valid RFC 4180 | ✅ header + 8 rows; the comma-bearing summary is quoted |
+| 10 | CSV column count is stable per row | ✅ 10 columns on the header and on a data row |
+| 11 | HTML export is self-contained | ✅ **0** external `http(s)` refs; opens and renders outside the app |
+| 12 | HTML shows line breaks, not escaped markup | ✅ 0 × `&lt;br&gt;`, 41 × real `<br>` (after fix 42) |
+| 13 | PDF path opens the print pipeline | ✅ `WindowsLaptopDiagnostics - Print` dialog appeared |
+| 14 | Cancelling PDF is reported honestly | ✅ *Print dialog cancelled - no PDF was produced.* |
+| 15 | **A bogus Google Form fails loudly** | ✅ **`Google answered 404 Not Found`** — no success claimed |
+| 16 | Ambiguous Google response is not called a success | ✅ a 200 without confirmation markup → *must not be assumed to have arrived* |
+| 17 | Google send is blocked before any config exists | ✅ *set the form URL and at least one entry id* |
+| 18 | Email blocked without a password when auth is on | ✅ *Authentication is enabled but no password was supplied for this session.* |
+| 19 | SMTP failure surfaced verbatim | ✅ `SMTP error: Failure sending mail. (code -1). Common causes are …` |
+| 20 | **SMTP password never reaches disk** | ✅ typed `hunter2` → `share.json` has no `Password` key and no `hunter2` |
+| 21 | Non-secret settings persist | ✅ form URL, entry ids, host/from/to/subject all reloaded after restart |
+
+**Real values observed during a Phase 6 run:**
+
+```
+Auto run: 8 steps selected, 7 of 8 executed
+  System information   Passed   13 inventory items read.
+  Windows & drivers    Passed   No device reports a driver problem code.
+  Storage health       Passed   1 disk(s) read; SMART summary OK (OS-level verdict only).
+  Battery & charging   Passed   Charge 95 %, wear 28.6 % (measured from both capacities).
+  USB devices          Passed   7 entr(ies) enumerated, none with a problem code.
+  Bluetooth            Passed   A Bluetooth radio adapter is present and reports no problem.
+  Network addressing   Passed   1 adapter(s) read. No probe was sent - that is an opt-in.
+  Temperature sensors  Unsupported  CPU temperature is not readable in this session.
+                                   No thermal reading is invented.
+
+History after restart: 8 result(s) · C:\Users\Admin\AppData\Local\WindowsLaptopDiagnostics\history\history.json
+CSV :  Timestamp (local),Test,Category,Status,Duration (s),Summary,Readings,Warnings,Errors,User confirmed
+HTML: 0 external references, 41 line breaks, 8 status cells
+Share (bogus URL): Google answered 404 Not Found.
+Share (no password): Authentication is enabled but no password was supplied for this session.
+SMTP (bogus host):  SMTP error: Failure sending mail. (code -1).
+```
+
 **Real values observed during a CPU run (proving live reads, not mock data):**
 
 ```
@@ -307,6 +390,21 @@ Battery 95% · AC adapter · not charging
 | 40 | `CS0128`/`CS0165` duplicate and unassigned `d`, `f` in the battery note | the new pattern variables reused names already bound earlier in the same scope | renamed to `wearNow` / `designNow` / `fullNow` |
 | 41 | USB checklist text clipped at the panel edge (`...plugged into the p`) | `CheckBox` content does not wrap by default | content moved into an inner `TextBlock` with `TextWrapping="Wrap"` |
 
+## Errors found and fixed during Phase 6
+
+| # | Error | Cause | Fix |
+| --- | --- | --- | --- |
+| 42 | Exported HTML showed the literal text `&lt;br&gt;` instead of line breaks between readings | `H()` escaped the `<br>` separators that were meant to be markup | each value escaped first, then joined with unescaped `<br>`; verified 0 escaped occurrences and 41 real tags |
+| 43 | SMTP password silently ignored by the `PasswordBox` binding | `PasswordBox.Password` is a plain CLR property, not a dependency property, so a WPF `Binding` on it does nothing | pushed from the `PasswordChanged` event in the code-behind instead |
+| 44 | History rows bound a **string** status to `StatusToBrush`, which only accepts the `TestStatus` enum | history stores the label text, not the enum, so every row fell back to neutral grey | added `StatusTextToBrushConverter`; verified Passed green / Unsupported purple on screen |
+| 45 | *"user confirmed"* appeared on every history row regardless of the fact | the label was written literally into the item template | moved to its own `TextBlock` gated on `UserConfirmed` |
+| 46 | `MC3000` - XAML comments containing `--` are invalid XML | decorative `<!-- ---- section ---- -->` separators | separators replaced with plain words |
+| 47 | `MC3072` - `Visibility` does not exist on `Run` | `Run` derives from `FrameworkContentElement`, which has no `Visibility` | the confirm label moved to its own `TextBlock` |
+| 48 | `CS1061` - `AsyncRelayCommand` has no `RaiseCanExecuteChanged` | only `RelayCommand` has that method; both types actually listen to `CommandManager.RequerySuggested` | one `CommandManager.InvalidateRequerySuggested()` covers both |
+| 49 | `PrintQueue.CreateXpsDocumentWriter()` does not exist, and `PrintDialog` is not `IDisposable` | guessed API - `XpsDocumentWriter` is created from an `XpsDocument`, not a `PrintQueue` | verified against the reference assembly and switched to the documented `PrintDialog.PrintDocument(paginator, name)` |
+| 50 | `CS0103`/`CS4034` in the orchestrator - the network flag was out of scope and the `Task.Run` lambda could not `await` | `RunOneAsync` did not receive the flag, and its lambda was not `async` | flag passed as a parameter; lambda marked `async` |
+| 51 | `CS8848` - switch precedence with `value as string switch` | `as` binds tighter than `switch` | parenthesised `(value as string) switch` |
+
 ---
 
 ## Known limitations
@@ -344,7 +442,7 @@ See [docs/Known-Limitations.md](docs/Known-Limitations.md). Headline items:
 | 3 | Speakers, microphone, camera | ✅ done & verified |
 | 4 | CPU/GPU/RAM stress, fan, thermal | ✅ done & verified |
 | 5 | Storage, battery, network, Bluetooth, USB, system/Windows health | ✅ done & verified |
-| 6 | Automatic diagnostics, history, CSV/HTML/PDF | ⬜ not started |
+| 6 | Automatic diagnostics, history, CSV/HTML/PDF, Google Form + email share | ✅ done & verified |
 | 7 | Hardening, profiling, packaging, final docs | ⬜ not started |
 
-**Never claimed:** the application is not finished. Only Phases 1-5 are implemented and verified.
+**Never claimed:** the application is not finished. Only Phases 1-6 are implemented and verified.

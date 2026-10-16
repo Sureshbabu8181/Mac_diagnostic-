@@ -59,17 +59,26 @@ is worked around with fabricated data — affected tests report `Unsupported`, `
 | 35 | **Battery wear from a single sample is one indicator, not a verdict** | `(design − full charge) ÷ design` is a real measurement from firmware, but it says nothing about cycle count, temperature history or behaviour under load. The page states the arithmetic it used and calls the figure one indicator among several |
 | 36 | **The update list comes from `Win32_QuickFixEngineering`, which is not Windows Update** | It omits updates installed through newer servicing channels on some builds, and returns an empty list on others. An empty list is therefore reported as *Windows returned no update list through WMI* and is **never** read as *this machine is unpatched* |
 | 37 | **USB enumeration proves driver binding, not that a port works** | Seeing a device in `Win32_PnPEntity` means Windows bound a driver to it. It says nothing about data transfer, connector retention or re-plug behaviour, so detection evidence and the human's manual checks are reported as two separate results and never merged into one pass |
+| 38 | **The orchestrator will only automate 8 of its 18 steps** | A colour pattern cannot be judged without eyes, a key press cannot be synthesised into a pass, an acoustic test needs ears and a stress test needs a technician to choose a duration. Display, keyboard, touchpad, speakers, microphone, camera and the four stress tests are listed with the reason they need a human and recorded `Not Run` — which the summary counts separately and never adds to the pass total |
+| 39 | **The app cannot create or configure a Google Form, and Google gives no receipt** | Linking a Form to a Sheet, turning on *accept responses from anyone with the link*, and reading the `entry.XXXXXXXX` field ids are all manual steps in a browser. The app therefore requires a supplied URL and field map, and — because Google returns no row identifier — an accepted POST is only called a success when the confirmation page markup comes back; anything ambiguous is reported as *unverified* and must be checked in the Sheet itself |
+| 40 | **Email is plain SMTP with basic authentication only** | No OAuth2/XOAUTH2 flow is implemented, so a Google or Microsoft account needs an app password (or a server that accepts credentials directly). Host, TLS mode, port and both addresses are supplied by the user, every SMTP failure is surfaced verbatim with its Windows error code, and *accepted for delivery* is deliberately worded as server acceptance rather than as delivered |
+| 41 | **PDF export uses the Windows print pipeline, so the destination is a human choice** | The document is handed to `PrintDialog`; saving a file depends on picking *Microsoft Print to PDF* (or another driver that writes a file). Cancelling is reported as *Print dialog cancelled - no PDF was produced.* rather than as a silent success, and no fallback format is substituted behind the technician's back |
+| 42 | **The SMTP password is never persisted, so it must be retyped each session** | `share.json` stores host, port, TLS, username, addresses and subject — but no `Password` key at all, verified after a save with a typed value. The trade-off is intentional: a copied settings file cannot send mail on the technician's behalf |
 
 ## Not yet implemented
 
-Phases 6-7 of `IMPLEMENTATION_PLAN.md` (automatic diagnostics, history/CSV/HTML/PDF reports,
-hardening and packaging) are pending; their sidebar entries currently show an explicit
-*Not yet implemented* placeholder that performs no measurement and reports no result.
+Phase 7 of `IMPLEMENTATION_PLAN.md` (hardening, resource profiling, self-contained publish,
+final docs) is pending.
 
-Phases 1-5 (foundation + dashboard, display, keyboard, touchpad/mouse, speakers, microphone,
+Phases 1-6 (foundation + dashboard, display, keyboard, touchpad/mouse, speakers, microphone,
 camera, CPU/GPU/RAM stress, fan & cooling, temperature & sensors, storage, battery, network,
-Bluetooth, USB, system information, Windows & driver health) are implemented and verified -
+Bluetooth, USB, system information, Windows & driver health, automatic diagnostics, history,
+CSV/HTML/PDF export, Google Form + email share) are implemented and verified —
 see `PROJECT_STATUS.md`.
+
+**Bluetooth pairing/discovery is not implemented**: Phase 5 reads radio and adapter presence
+only, with no WinRT `DeviceWatcher` flow; the page states that a pairing remains a manual
+step in Windows Settings.
 
 Note on Phase 3: the **speakers** and **camera** paths were exercised against real endpoints in
 this session. The **microphone** path could not be exercised end-to-end here because the session
@@ -90,3 +99,18 @@ and Windows health** were cross-checked with independent `Get-CimInstance` reads
 implemented and the page says so. **USB** detection was verified, but no known-good device was
 plugged and unplugged in this session, so the five manual checks remain unticked by design — the
 summary explicitly reads *nothing is treated as passing* at zero.
+
+Note on Phase 6: the orchestrator ran on this machine and produced `7 passed · 1 unsupported ·
+7 of 8 checks actually executed`, with the thermal step honestly `Unsupported`. History was
+written immediately (`history.json`, 7727 bytes) and **survived a kill + relaunch**. CSV and
+HTML exports were inspected as files rather than as UI text: the CSV is RFC 4180 with 10 stable
+columns, and the HTML contains **0 external references** so it renders standalone. Both were
+deleted from the Desktop after verification to leave the machine clean.
+
+Sharing was tested on its failure paths, because that is where honesty is decided: a bogus Form
+URL returned **`Google answered 404 Not Found`** (no success claimed), an unconfigured send was
+blocked before any request, an authenticated send without a password was refused, and a bogus
+SMTP host surfaced `SMTP error: Failure sending mail. (code -1)` verbatim. After typing a
+password and saving, `share.json` was inspected and contains neither the value nor a `Password`
+key. **No successful Google Form submission or email delivery has been proven**, because that
+requires a real form and a reachable mail server; the success paths are code-verified only.
