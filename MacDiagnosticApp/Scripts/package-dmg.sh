@@ -78,6 +78,7 @@ PLIST
     cp -R "$BUNDLE" "$STAGE/"
     cp "Scripts/allow-open.sh" "$STAGE/"
     chmod +x "$STAGE/allow-open.sh"
+    cp "Scripts/HOW-TO-INSTALL-TRUST.txt" "$STAGE/HOW TO INSTALL & TRUST.txt"
     ln -s /Applications "$STAGE/Applications"
 
     echo "== [$ARCH] Building .dmg =="

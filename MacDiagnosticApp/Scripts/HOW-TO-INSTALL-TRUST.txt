@@ -1,0 +1,47 @@
+ONE DIAGNOSE — HOW TO INSTALL & TRUST (macOS)
+=============================================
+
+This app is ad-hoc signed (no paid Apple Developer ID), so macOS Gatekeeper
+shows "unidentified developer" on first launch. Choose ONE of the methods
+below. A one-time setup per Mac — after that it opens normally.
+
+--------------------------------------------------------------------------
+EASIEST (recommended): run the included trust helper
+--------------------------------------------------------------------------
+1. Open this disk image (DMG).
+2. Drag the "One Diagnose" app into the "Applications" shortcut.
+3. Double-click "allow-open.sh" in this window (if macOS blocks it:
+   right-click the file → Open → Open).
+4. Enter your password if asked. The app is trusted and opens by itself.
+
+--------------------------------------------------------------------------
+MANUAL METHOD A: right-click → Open
+--------------------------------------------------------------------------
+1. Drag the app into Applications.
+2. In Finder, right-click (or Control-click) "One Diagnose" → Open.
+3. Click "Open" in the dialog. Done forever — future launches are normal.
+
+--------------------------------------------------------------------------
+MANUAL METHOD B: System Settings approval
+--------------------------------------------------------------------------
+1. Double-click "One Diagnose" once (it will be blocked — that's fine).
+2. Open System Settings → Privacy & Security.
+3. Scroll to Security; click "Open Anyway" next to the One Diagnose message.
+4. Confirm, then open the app from Applications.
+
+--------------------------------------------------------------------------
+WHICH DMG DO I NEED?
+--------------------------------------------------------------------------
+• Apple Silicon (M1/M2/M3/M4 Mac):  One-Diagnose-…-arm64.dmg
+• Intel processor Mac:               One-Diagnose-…-x86_64.dmg
+
+The Mac processor type is shown in  → About This Mac.
+
+--------------------------------------------------------------------------
+NOTES
+--------------------------------------------------------------------------
+• The app runs fully offline; nothing is uploaded unless you configure
+  email/Google Sheet reporting yourself in Settings.
+• Terminal-savvy users can trust manually with:
+      xattr -cr "/Applications/One Diagnose.app"
+  (adjust the path/name if your copy is named differently)
